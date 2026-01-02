@@ -1,0 +1,47 @@
+{{ define "content" }}
+<div class="container mt-4">
+    <h1 class="text-center mb-4">Fleets</h1>
+    <div class="d-flex justify-content-between mb-4">
+        <button class="btn btn-custom" data-bs-toggle="modal" data-bs-target="#newFleetModal">Create New Fleet</button>
+    </div>
+    <div class="row">
+        {{ range $fleet := . }}
+        <div class="col-md-4 mb-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">{{ $fleet.Name }}</h5>
+                    <p><small>{{ $fleet.UID }}</small></p>
+                    <p class="card-text">{{ $fleet.Description }}</p>
+                    <a href="/fleets/{{ $fleet.UID }}" class="btn btn-dark">View Drones</a>
+                </div>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+</div>
+
+<div class="modal fade" id="newFleetModal" tabindex="-1" aria-labelledby="newFleetModalLabel" aria-hidden="true" style="color:black">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newFleetModalLabel">Create New Fleet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="fleetName" class="form-label">Fleet Name</label>
+                        <input type="text" class="form-control" id="fleetName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" required>
+                    </div>
+                    <button type="submit" class="btn btn-dark">Create Fleet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}

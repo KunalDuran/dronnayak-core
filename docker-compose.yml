@@ -1,0 +1,9 @@
+services:
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+
+    volumes:
+      - /home/ubuntu/database:/data/db

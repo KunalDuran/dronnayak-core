@@ -1,0 +1,28 @@
+        body {
+            background-color: #2E2E2E;
+            color: #D0D0B0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .btn-custom {
+            background-color: #8B4513;
+            color: #F5F5DC;
+        }
+
+        .card {
+            background-color: #333;
+            color: #f5f5dc;
+        }
+       
+        .card-header {
+            background-color: #444;
+        }
+
+        .chart-placeholder {
+            height: 200px;
+            background-color: #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+        }

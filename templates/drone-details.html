@@ -1,0 +1,334 @@
+{{ define "content" }}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="text-center mb-0 flex-grow-1">Drone Details - {{ .UID }}</h1>
+    <a href="/terminal/{{ .UID }}" target="_blank" class="btn btn-primary">
+        <i class="fas fa-terminal"></i> Open Terminal
+    </a>
+</div>
+
+<!-- Basic Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Basic Information</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ if .Name }}{{ .Name }}{{ else }}Unnamed Drone{{ end }}</p>
+                        <p><strong>Description:</strong> {{ if .Description }}{{ .Description }}{{ else }}No description{{ end }}</p>
+                        <p><strong>Fleet ID:</strong> {{ .FleetID }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Host Name:</strong> {{ .Status.HostName }}</p>
+                        <p><strong>Platform:</strong> {{ .Status.Platform }}</p>
+                        <p><strong>Boot Time:</strong> <span id="bootTime">{{ .Status.BootTime }}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- CPU Information -->
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">CPU Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Total Usage:</span>
+                        <span class="badge bg-{{ if lt .Status.CPUStats.TotalUsage 50 }}success{{ else if lt .Status.CPUStats.TotalUsage 80 }}warning{{ else }}danger{{ end }}">
+                            {{ .Status.CPUStats.TotalUsage }}%
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Physical Cores:</span>
+                        <span>{{ .Status.CPUStats.PhysicalCores }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Logical Cores:</span>
+                        <span>{{ .Status.CPUStats.LogicalCores }}</span>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>Model:</strong><br>
+                        <small class="text-muted">{{ .Status.CPUStats.Model }}</small>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Frequency:</span>
+                        <span>{{ .Status.CPUStats.Frequency }} MHz</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Information -->
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Memory Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Total Memory:</span>
+                        <span>{{ printf "%.2f" .Status.MemStat.TotalGB }} GB</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Used Memory:</span>
+                        <span>{{ printf "%.2f" .Status.MemStat.UsedGB }} GB</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Cached Memory:</span>
+                        <span>{{ printf "%.2f" .Status.MemStat.CachedGB }} GB</span>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 id="memoryProgressBar"
+                                 data-used="{{ .Status.MemStat.UsedGB }}" 
+                                 data-total="{{ .Status.MemStat.TotalGB }}"
+                                 aria-valuemin="0" aria-valuemax="100">
+                                <span id="memoryPercentage"></span>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Disk Information -->
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Disk Information</h5>
+                {{ range $index, $disk := .Status.DiskStats }}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span><strong>{{ $disk.Path }}</strong> ({{ $disk.MountPoint }})</span>
+                        <span>{{ printf "%.2f" $disk.UsedGB }} / {{ printf "%.2f" $disk.TotalGB }} GB</span>
+                    </div>
+                    <div class="progress mt-2" style="height: 20px;">
+                        <div class="progress-bar disk-progress-bar" role="progressbar" 
+                             data-used="{{ $disk.UsedGB }}" 
+                             data-total="{{ $disk.TotalGB }}"
+                             aria-valuemin="0" aria-valuemax="100">
+                            <span class="disk-percentage"></span>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Information -->
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Network Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Data Sent:</span>
+                        <span>{{ .Status.NetStat.SentKB }} KB</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Data Received:</span>
+                        <span>{{ .Status.NetStat.RecvKB }} KB</span>
+                    </li>
+                </ul>
+                <h6 class="mt-3">Network Interfaces:</h6>
+                {{ range .Status.NetworkInfo }}
+                <div class="card mt-2">
+                    <div class="card-body py-2">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Interface</small><br>
+                                <strong>{{ .IfName }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">IP Address</small><br>
+                                <strong>{{ .IP }}</strong>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <small class="text-muted">MAC Address</small><br>
+                                <small>{{ .Mac }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Live Logs</h5>
+                    <div>
+                        <button id="streamLogsBtn" class="btn btn-primary" onclick="toggleLogStream()">
+                            <i class="fas fa-play"></i> Stream Logs
+                        </button>
+                        <button id="clearLogsBtn" class="btn btn-outline-secondary ms-2" onclick="clearLogs()">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div id="logs" class="bg-dark text-light p-3 rounded" style="height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
+                    <div class="text-muted text-center">Click "Stream Logs" to start receiving live log data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Drone History</h5>
+                <ul class="list-group">
+                    <li class="list-group-item">Flight 1: Completed</li>
+                    <li class="list-group-item">Flight 2: Completed</li>
+                    <li class="list-group-item">Flight 3: In Progress</li>
+                </ul>
+                <a href="#" class="btn btn-dark mt-3">Download All Logs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let logs = document.getElementById('logs');
+    let streamLogsBtn = document.getElementById('streamLogsBtn');
+    let clearLogsBtn = document.getElementById('clearLogsBtn');
+    let socket = null;
+    let isStreaming = false;
+
+    // Format boot time
+    function formatBootTime(timestamp) {
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleString();
+    }
+
+    // Update boot time display and progress bars
+    document.addEventListener('DOMContentLoaded', function() {
+        const bootTimeElement = document.getElementById('bootTime');
+        if (bootTimeElement) {
+            bootTimeElement.textContent = formatBootTime(parseInt(bootTimeElement.textContent));
+        }
+
+        // Update memory progress bar
+        const memoryBar = document.getElementById('memoryProgressBar');
+        if (memoryBar) {
+            const used = parseFloat(memoryBar.dataset.used);
+            const total = parseFloat(memoryBar.dataset.total);
+            const percentage = (used / total) * 100;
+            memoryBar.style.width = percentage + '%';
+            memoryBar.setAttribute('aria-valuenow', percentage);
+            document.getElementById('memoryPercentage').textContent = percentage.toFixed(1) + '%';
+        }
+
+        // Update disk progress bars
+        const diskBars = document.querySelectorAll('.disk-progress-bar');
+        diskBars.forEach(bar => {
+            const used = parseFloat(bar.dataset.used);
+            const total = parseFloat(bar.dataset.total);
+            const percentage = (used / total) * 100;
+            bar.style.width = percentage + '%';
+            bar.setAttribute('aria-valuenow', percentage);
+            bar.querySelector('.disk-percentage').textContent = percentage.toFixed(1) + '%';
+        });
+    });
+
+    function toggleLogStream() {
+        if (!isStreaming) {
+            startLogStream();
+        } else {
+            stopLogStream();
+        }
+    }
+
+    function startLogStream() {
+        if (socket) {
+            socket.close();
+        }
+
+        socket = new WebSocket('ws://localhost:8090/ws?role=subscriber&topic={{ .UID }}_5760');
+        
+        socket.onopen = (event) => {
+            console.log('WebSocket connection opened');
+            isStreaming = true;
+            streamLogsBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Streaming';
+            streamLogsBtn.className = 'btn btn-danger';
+            
+            // Clear the placeholder message
+            logs.innerHTML = '';
+            
+            // Add connection status message
+            addLogMessage('Connected to log stream...', 'text-success');
+        };
+
+        socket.onmessage = async (event) => {
+            data = await event.data.text();
+            // need to add mavlink parser here
+            addLogMessage(data);
+        };
+
+        socket.onclose = (event) => {
+            console.log('WebSocket connection closed');
+            isStreaming = false;
+            streamLogsBtn.innerHTML = '<i class="fas fa-play"></i> Stream Logs';
+            streamLogsBtn.className = 'btn btn-primary';
+            
+            if (event.code !== 1000) { // Not a normal closure
+                addLogMessage('Connection lost. Click "Stream Logs" to reconnect.', 'text-warning');
+            }
+        };
+
+        socket.onerror = (event) => {
+            console.error('WebSocket error:', event);
+            addLogMessage('Connection error occurred.', 'text-danger');
+        };
+    }
+
+    function stopLogStream() {
+        if (socket) {
+            socket.close(1000, 'User stopped streaming');
+            socket = null;
+        }
+        isStreaming = false;
+        streamLogsBtn.innerHTML = '<i class="fas fa-play"></i> Stream Logs';
+        streamLogsBtn.className = 'btn btn-primary';
+        addLogMessage('Log streaming stopped.', 'text-info');
+    }
+
+    function addLogMessage(message, className = '') {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `mb-1 ${className}`;
+        logEntry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${message}`;
+        logs.appendChild(logEntry);
+        logs.scrollTop = logs.scrollHeight;
+    }
+
+    function clearLogs() {
+        logs.innerHTML = '<div class="text-muted text-center">Logs cleared. Click "Stream Logs" to start receiving live log data...</div>';
+    }
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (socket) {
+            socket.close();
+        }
+    });
+</script>
+{{ end }}
