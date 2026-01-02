@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/KunalDuran/gowsrelay/server"
+
 	"github.com/KunalDuran/dronnayak/internal/data"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,10 +36,10 @@ func main() {
 	r.Post("/device-status/{drone_id}", deviceStatus)
 	r.Get("/device-status/{drone_id}", deviceStatus)
 
-	r.HandleFunc("/ws", handleWebSocket)
-	r.HandleFunc("/tcp", handleTCPProxy)
-	r.HandleFunc("/status", handleStatus)
-	r.HandleFunc("/health", handleHealth)
+	r.HandleFunc("/ws", server.HandleWebSocket)
+	r.HandleFunc("/tcp", server.HandleTCPProxy)
+	r.HandleFunc("/status", server.HandleStatus)
+	r.HandleFunc("/health", server.HandleHealth)
 
 	r.Group(func(rauth chi.Router) {
 		rauth.Use(SessionAuth)

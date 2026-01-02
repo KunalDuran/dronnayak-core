@@ -10,13 +10,13 @@ require (
 	github.com/bluenviron/gomavlib/v3 v3.0.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	go.mongodb.org/mongo-driver v1.17.0
 )
 
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect
