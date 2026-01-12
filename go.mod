@@ -1,4 +1,4 @@
-module github.com/KunalDuran/dronnayak
+module github.com/KunalDuran/dronnayak-core
 
 go 1.24.0
 

@@ -1,5 +1,5 @@
 {
 	"uuid": "36fad11b-1c41-44a1-b4f4-b11fc0adf947",
-	"server_path": "http://192.168.1.9:8090",
+	"server_path": "http://127.0.0.1:8090",
     "tunnel_ports": ["5760"]
 }
