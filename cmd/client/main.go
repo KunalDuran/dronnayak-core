@@ -8,7 +8,7 @@ import (
 
 	"github.com/KunalDuran/devstat"
 
-	"github.com/KunalDuran/dronnayak/internal/web"
+	"github.com/KunalDuran/dronnayak-core/internal/web"
 )
 
 func main() {

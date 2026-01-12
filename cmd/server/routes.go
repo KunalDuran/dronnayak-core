@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/KunalDuran/dronnayak/internal/data"
+	"github.com/KunalDuran/dronnayak-core/internal/data"
 	"github.com/go-chi/chi/v5"
 )
 

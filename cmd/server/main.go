@@ -7,7 +7,7 @@ import (
 
 	"github.com/KunalDuran/gowsrelay/server"
 
-	"github.com/KunalDuran/dronnayak/internal/data"
+	"github.com/KunalDuran/dronnayak-core/internal/data"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
