@@ -1,8 +1,48 @@
 {{ define "content" }}
 
-<div class="container mt-4">
+<div class="container my-3">
     <h1 class="text-center mb-4">Welcome to the Dronnayak Dashboard</h1>
     <p class="text-center mb-4">Monitor and manage your fleets of drones with real-time data and analysis.</p>
+
+
+    <!-- Current Capabilities -->
+    <div class="row mb-3">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title">Live Telemetry</h4>
+                    <p class="text-white">
+                        Stream MAVLink telemetry from a Pixhawk-connected
+                        companion computer to the cloud in near real-time.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title">Connection State</h4>
+                    <p class="text-white">
+                        Observe drone connectivity, online/offline transitions,
+                        and basic link health under unreliable networks.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title">Telemetry History</h4>
+                    <p class="text-white">
+                        Inspect recent telemetry snapshots for post-flight
+                        analysis and system-level understanding.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Quick Stats -->
     <div class="row">
@@ -40,60 +80,42 @@
         </div>
     </div>
 
-    <!-- Recent Activity -->
+
+
+    <!-- Minimal Stats (Exploratory, not KPIs) -->
     <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Drone Activity</h5>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow">
                 <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">Drone X1 completed flight in Sector 1</li>
-                        <li class="list-group-item">Drone Z3 battery low - return to base</li>
-                        <li class="list-group-item">New fleet added: Fleet Bravo</li>
-                        <li class="list-group-item">Drone A5 went offline</li>
-                    </ul>
+                    <h5 class="card-title">Connected Devices</h5>
+                    <p class="card-text display-4">0</p>
                 </div>
             </div>
         </div>
 
-        <!-- Alerts -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0">Telemetry Alerts</h5>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow">
                 <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">Drone A2: Low altitude alert</li>
-                        <li class="list-group-item">Drone F4: Battery at 10%</li>
-                        <li class="list-group-item">Drone B6: Disconnected</li>
-                    </ul>
+                    <h5 class="card-title">Active Streams</h5>
+                    <p class="card-text display-4">0</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Charts & Analysis -->
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0">Fleet Activity (Last 7 Days)</h5>
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow">
                 <div class="card-body">
-                    <div class="chart-placeholder">Fleet Activity Chart</div>
+                    <h5 class="card-title">Messages Observed</h5>
+                    <p class="card-text display-4">—</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header">
-                    <h5 class="mb-0">Drone Health Overview</h5>
-                </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center shadow">
                 <div class="card-body">
-                    <div class="chart-placeholder">Drone Health Chart</div>
+                    <h5 class="card-title">Last Telemetry Update</h5>
+                    <p class="card-text display-4">—</p>
                 </div>
             </div>
         </div>
