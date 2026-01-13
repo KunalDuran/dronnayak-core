@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"encoding/json"
@@ -110,4 +110,28 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func NewDefaultDeviceConfig(uuid, serverURL string) Config {
+	return Config{
+		UUID: uuid,
+		MAVLink: MAVLinkConfig{
+			BaudRate:        57600,
+			TCPAddress:      "0.0.0.0:5760",
+			StreamFrequency: 10,
+			OutSystemID:     255,
+		},
+		Server: ServerConfig{
+			URL: serverURL,
+		},
+		Tunnel: TunnelConfig{
+			Ports:  []string{"5760"},
+			WSPath: "/ws",
+		},
+		Stats: StatsConfig{
+			Enabled:  true,
+			Interval: 5 * time.Second,
+			Endpoint: fmt.Sprintf("/device-status/%s", uuid),
+		},
+	}
 }
