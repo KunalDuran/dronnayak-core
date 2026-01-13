@@ -2,156 +2,187 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/KunalDuran/gowsrelay/client"
 	"github.com/bluenviron/gomavlib/v3"
 	"github.com/bluenviron/gomavlib/v3/pkg/dialects/common"
 )
 
+// Dronnayak represents the main drone application
 type Dronnayak struct {
-	MavNode *gomavlib.Node
-	Config  Config
+	mavNode *gomavlib.Node
+	config  *Config
 }
 
-func NewDronenayak() *Dronnayak {
-	config := loadConfig("config.json")
+// NewDronnayak creates a new Dronnayak instance
+func NewDronnayak(configPath string) (*Dronnayak, error) {
+	config, err := LoadConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
 	return &Dronnayak{
-		Config: config,
-	}
+		config: config,
+	}, nil
 }
 
-func (d *Dronnayak) Boot() {
-	var serialPort string
-	// if linux, use serial port
-	if runtime.GOOS == "linux" {
-		serialPort = "/dev/ttyACM0"
-	} else {
-		serialPort = "COM4"
+// Run starts the application and blocks until shutdown
+func (d *Dronnayak) Run(ctx context.Context) error {
+	// Create a cancellable context
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Handle graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Initialize MAVLink node
+	if err := d.initMAVLink(); err != nil {
+		return fmt.Errorf("failed to initialize MAVLink: %w", err)
+	}
+	defer d.Close()
+
+	// Start MAVLink event processing
+	go d.processMAVLinkEvents(ctx)
+
+	// Start WebSocket tunnels
+	d.startTunnels()
+
+	// Start stats reporting if enabled
+	if d.config.Stats.Enabled {
+		go d.startStatsReporter(ctx)
 	}
 
-	if d.Config.SerialPort != "" {
-		serialPort = d.Config.SerialPort
-	}
+	// Wait for shutdown signal
+	sig := <-sigChan
+	log.Printf("Received signal: %v, shutting down gracefully...", sig)
+
+	return nil
+}
+
+// initMAVLink initializes the MAVLink node with current configuration
+func (d *Dronnayak) initMAVLink() error {
+	serialPort := d.detectSerialPort()
 
 	nodeConf := gomavlib.NodeConf{
 		Endpoints: []gomavlib.EndpointConf{
 			gomavlib.EndpointSerial{
-				Device: serialPort, // Typical USB connection for Pixhawk
-				Baud:   57600,      // Standard MAVLink baud rate
+				Device: serialPort,
+				Baud:   d.config.MAVLink.BaudRate,
 			},
-			// TCP server for Mission Planner
 			&gomavlib.EndpointTCPServer{
-				Address: "0.0.0.0:5760",
+				Address: d.config.MAVLink.TCPAddress,
 			},
 		},
 		Dialect:     common.Dialect,
-		OutVersion:  gomavlib.V2, // Use MAVLink v2
-		OutSystemID: 255,         // Ground Control Station ID
+		OutVersion:  gomavlib.V2,
+		OutSystemID: d.config.MAVLink.OutSystemID,
 	}
 
-	if d.Config.StreamFrequency > 0 {
-		nodeConf.StreamRequestFrequency = d.Config.StreamFrequency
+	if d.config.MAVLink.StreamFrequency > 0 {
+		nodeConf.StreamRequestFrequency = d.config.MAVLink.StreamFrequency
+		log.Printf("Stream frequency: %d Hz", d.config.MAVLink.StreamFrequency)
 	}
-	log.Printf("Stream frequency: %d", nodeConf.StreamRequestFrequency)
-	// Initialize MAVLink node connected to Pixhawk via USB
+
 	node, err := gomavlib.NewNode(nodeConf)
-
 	if err != nil {
-		log.Fatal("Failed to create MAVLink node:", err)
+		return fmt.Errorf("failed to create MAVLink node: %w", err)
 	}
-	defer node.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	d.mavNode = node
+	log.Printf("MAVLink initialized on %s (baud: %d)", serialPort, d.config.MAVLink.BaudRate)
+	return nil
+}
 
-	// Goroutine to read from MAVLink and send to WebSocket
-	go func() {
+// detectSerialPort detects the appropriate serial port based on OS
+func (d *Dronnayak) detectSerialPort() string {
+	if d.config.MAVLink.SerialPort != "" {
+		log.Printf("Using configured serial port: %s", d.config.MAVLink.SerialPort)
+		return d.config.MAVLink.SerialPort
+	}
 
-		for {
-			select {
-			case e := <-node.Events():
-				switch evt := e.(type) {
-				case *gomavlib.EventChannelOpen:
-					log.Printf("channel opened: %s", evt.Channel)
+	var defaultPort string
+	switch runtime.GOOS {
+	case "linux":
+		defaultPort = "/dev/ttyACM0"
+	case "windows":
+		defaultPort = "COM4"
+	case "darwin":
+		defaultPort = "/dev/tty.usbmodem1"
+	default:
+		defaultPort = "/dev/ttyACM0"
+	}
 
-				case *gomavlib.EventStreamRequested:
-					log.Printf("stream requested to chan=%s sid=%d cid=%d", evt.Channel,
-						evt.SystemID, evt.ComponentID)
+	log.Printf("Using auto-detected serial port: %s", defaultPort)
+	return defaultPort
+}
 
-				case *gomavlib.EventParseError:
-					log.Printf("parse error: %s", evt.Error)
+// processMAVLinkEvents handles all MAVLink events
+func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
+	for {
+		select {
+		case evt := <-d.mavNode.Events():
+			switch e := evt.(type) {
+			case *gomavlib.EventChannelOpen:
+				log.Printf("Channel opened: %s", e.Channel)
 
-				case *gomavlib.EventFrame:
-					// log.Printf("%#v, %#v\n", evt.Frame, evt.Message())
-					// This line automatically sends any MAVLink frame
-					// to the other side (Pixhawk <-> Mission Planner)
-					node.WriteFrameExcept(evt.Channel, evt.Frame)
+			case *gomavlib.EventStreamRequested:
+				log.Printf("Stream requested: chan=%s sid=%d cid=%d",
+					e.Channel, e.SystemID, e.ComponentID)
 
-				case *gomavlib.EventChannelClose:
-					log.Printf("Connection closed: %v", evt.Channel)
+			case *gomavlib.EventParseError:
+				log.Printf("Parse error: %s", e.Error)
 
-				}
+			case *gomavlib.EventFrame:
+				// Forward frame to other endpoints (Pixhawk <-> Mission Planner)
+				d.mavNode.WriteFrameExcept(e.Channel, e.Frame)
 
-			case <-ctx.Done():
-				return
+			case *gomavlib.EventChannelClose:
+				log.Printf("Channel closed: %v", e.Channel)
 			}
-		}
-	}()
 
-	for _, port := range d.Config.TunnelPorts {
-		// remove schema from server path
-		serverHost := strings.Replace(d.Config.ServerPath, "http://", "", 1)
-		serverHost = strings.Replace(serverHost, "https://", "", 1)
-		go client.CreateWebSocketTunnel(serverHost, port, "/ws", fmt.Sprintf("%s_%s", d.Config.UUID, port))
-	}
-
-	// Keep the main goroutine alive
-	<-ctx.Done()
-	log.Println("Shutting down MAVLink WebSocket bridge")
-}
-
-func (d *Dronnayak) CommandMessages(id ...int) {
-	fmt.Println("command messages")
-}
-
-func (d *Dronnayak) FetchMessages() {
-	node := d.MavNode
-	for evt := range node.Events() {
-		if frm, ok := evt.(*gomavlib.EventFrame); ok {
-			fmt.Println(frm.Message())
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
-type Config struct {
-	UUID            string   `json:"uuid"`
-	SerialPort      string   `json:"serial_port"`
-	ServerPath      string   `json:"server_path"`
-	TunnelPorts     []string `json:"tunnel_ports"`
-	StreamFrequency int      `json:"stream_frequency"`
+// startTunnels starts WebSocket tunnels for configured ports
+func (d *Dronnayak) startTunnels() {
+	if len(d.config.Tunnel.Ports) == 0 {
+		log.Println("No tunnel ports configured")
+		return
+	}
+
+	serverHost := d.cleanServerURL(d.config.Server.URL)
+
+	for _, port := range d.config.Tunnel.Ports {
+		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, port)
+
+		go func(port, id string) {
+			log.Printf("Starting tunnel for port %s (ID: %s)", port, id)
+			client.CreateWebSocketTunnel(serverHost, port, d.config.Tunnel.WSPath, id)
+		}(port, tunnelID)
+	}
 }
 
-func loadConfig(configFile string) Config {
+// cleanServerURL removes http/https schema from server URL
+func (d *Dronnayak) cleanServerURL(url string) string {
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "https://")
+	return url
+}
 
-	file, err := os.Open(configFile)
-	if err != nil {
-		log.Fatal("Error opening config file:", err)
+// Close gracefully shuts down the MAVLink node
+func (d *Dronnayak) Close() {
+	if d.mavNode != nil {
+		log.Println("Closing MAVLink node...")
 	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-
-	var config Config
-	err = decoder.Decode(&config)
-	if err != nil {
-		log.Fatal("Error decoding config file:", err)
-	}
-
-	return config
 }
