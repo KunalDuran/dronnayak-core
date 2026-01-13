@@ -32,7 +32,7 @@ func main() {
 	r.Get("/logout", logout)
 	r.Get("/signup", signup)
 	r.Post("/signup", signup)
-	r.Get("/register/{fleet_id}", registerDevice)
+	r.Get("/device/{drone_id}/config.json", DeviceConfigHandler)
 	r.Post("/device-status/{drone_id}", deviceStatus)
 	r.Get("/device-status/{drone_id}", deviceStatus)
 
@@ -48,9 +48,14 @@ func main() {
 		rauth.Get("/fleets", fleets)
 		rauth.Post("/fleets", fleets)
 		rauth.Get("/fleets/{fleet_id}", devices)
+		rauth.Post("/fleets/{fleet_id}/drones", createDrone)
+		rauth.Get("/fleets/{fleet_id}/drones/{drone_id}/install-command", getInstallCommand)
 		rauth.Get("/device/{drone_id}", deviceDetails)
 		rauth.Delete("/device/{drone_id}", deviceDetails)
 	})
+
+	// Public routes for device installation
+	r.Get("/device/{drone_id}/installer.sh", getInstallerScript)
 
 	log.Println("Server started on port 8090")
 	log.Fatal(http.ListenAndServe("0.0.0.0:8090", r))

@@ -9,14 +9,24 @@
     <div class="col-md-4 mb-3">
       <div class="card shadow">
         <div class="card-body">
-          <h5 class="card-title">{{ $drone.UID }}</h5>
+          <h5 class="card-title">{{ if $drone.Name }}{{ $drone.Name }}{{ else }}{{ $drone.UID }}{{ end }}</h5>
+          {{ if $drone.Description }}
+          <p class="card-text">{{ $drone.Description }}</p>
+          {{ end }}
+          <p class="card-text"><small class="">UID: {{ $drone.UID }}</small></p>
           <p class="card-text">Status: Online</p>
 
+          <!-- View Config Button -->
+          <button class="btn btn-info btn-sm mb-2" onclick="showConfig('{{ $drone.UID }}')">View Config</button>
+          
+          <!-- Get Install Command Button -->
+          <button class="btn btn-primary btn-sm mb-2" onclick="getInstallCommand('{{ $drone.UID }}')">Get Install Command</button>
+
           <!-- View Details Button -->
-          <a href="/device/{{ $drone.UID }}" class="btn btn-dark">View Details</a>
+          <a href="/device/{{ $drone.UID }}" class="btn btn-dark btn-sm mb-2">View Details</a>
 
           <!-- Delete Button -->
-          <button class="btn btn-danger" onclick="deleteDrone('{{ $drone.UID }}')">Delete</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDrone('{{ $drone.UID }}')">Delete</button>
         </div>
       </div>
     </div>
@@ -24,11 +34,81 @@
   </div>
 </div>
 
+<!-- Add Drone Modal with Form -->
 <div class="modal fade" id="newDroneModal" tabindex="-1" aria-labelledby="newDroneModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="max-height: 90vh;">
+    <div class="modal-content bg-dark text-light" style="max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header flex-shrink-0">
+        <h5 class="modal-title" id="newDroneModalLabel">Add New Drone</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="droneForm" method="POST" action="/fleets/{{ .ID }}/drones" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0;">
+          <!-- Basic Info -->
+          <h6 class="mb-3">Basic Information</h6>
+          <div class="mb-3">
+            <label for="droneName" class="form-label">Name</label>
+            <input type="text" class="form-control bg-dark text-light" id="droneName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="droneDescription" class="form-label">Description</label>
+            <textarea class="form-control bg-dark text-light" id="droneDescription" name="description" rows="2"></textarea>
+          </div>
+
+          <!-- MAVLink Config -->
+          <h6 class="mb-3 mt-4">MAVLink Configuration</h6>
+          <div class="mb-3">
+            <label for="serialPort" class="form-label">Serial Port</label>
+            <input type="text" class="form-control bg-dark text-light" placeholder="/dev/serial0" id="serialPort" name="serial_port">
+          </div>
+          <div class="mb-3">
+            <label for="tcpAddress" class="form-label">TCP Address</label>
+            <input type="text" class="form-control bg-dark text-light" id="tcpAddress" name="tcp_address" value="0.0.0.0:5760">
+          </div>
+          <div class="mb-3">
+            <label for="streamFrequency" class="form-label">Stream Frequency (Hz)</label>
+            <input type="number" class="form-control bg-dark text-light" id="streamFrequency" name="stream_frequency" value="10" min="0">
+          </div>
+
+          <!-- Tunnel Config -->
+          <h6 class="mb-3 mt-4">Tunnel Configuration</h6>
+          <div class="mb-3">
+            <label class="form-label">Tunnel Ports</label>
+            <div id="tunnelPortsContainer">
+              <div class="input-group mb-2">
+                <input type="text" class="form-control bg-dark text-light tunnel-port" name="tunnel_ports[]" value="5760">
+                <button type="button" class="btn btn-outline-danger" onclick="removePort(this)">Remove</button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPort()">Add Port</button>
+          </div>
+
+          <!-- Stats Config -->
+          <h6 class="mb-3 mt-4">Stats Configuration</h6>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="statsEnabled" name="stats_enabled" checked>
+            <label class="form-check-label" for="statsEnabled">Stats Enabled</label>
+          </div>
+          <div class="mb-3">
+            <label for="statsInterval" class="form-label">Stats Interval (seconds)</label>
+            <input type="number" class="form-control bg-dark text-light" id="statsInterval" name="stats_interval" value="5" min="1">
+          </div>
+        </div>
+        <div class="modal-footer flex-shrink-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Drone</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Install Command Modal -->
+<div class="modal fade" id="installCommandModal" tabindex="-1" aria-labelledby="installCommandModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-light">
       <div class="modal-header">
-        <h5 class="modal-title" id="addDroneModalLabel">Add New Drone</h5>
+        <h5 class="modal-title" id="installCommandModalLabel">Install Command</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -40,14 +120,12 @@
           <li>Execute the following command in the terminal:</li>
         </ol>
 
-        <!-- Command to copy -->
         <div class="input-group mb-3">
-          <input type="text" class="form-control" id="droneCommand"
-            value="wget -O - https://dashboard.dronnayak.com/register/{{ .ID }} | bash" readonly>
-          <button class="btn btn-outline-secondary" type="button" id="copyCommandBtn">Copy</button>
+          <input type="text" class="form-control bg-dark text-light" id="installCommand" readonly>
+          <button class="btn btn-outline-secondary" type="button" id="copyInstallCommandBtn">Copy</button>
         </div>
 
-        <p>Once the command is executed, your drone will be registered and appear in the fleet dashboard.</p>
+        <p>Once the command is executed, your drone will be installed and configured.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -56,17 +134,97 @@
   </div>
 </div>
 
-<script>
-  document.getElementById('copyCommandBtn').addEventListener('click', function () {
-    var commandInput = document.getElementById('droneCommand');
-    commandInput.select();
-    commandInput.setSelectionRange(0, 99999);
-    document.execCommand('copy');
+<!-- Config Display Modal -->
+<div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="max-height: 90vh;">
+    <div class="modal-content bg-dark text-light" style="max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header flex-shrink-0">
+        <h5 class="modal-title" id="configModalLabel">Device Configuration</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; flex: 1; min-height: 0;">
+        <pre id="configContent" class="bg-dark text-light p-3" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+      </div>
+      <div class="modal-footer flex-shrink-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    alert('Command copied to clipboard!');
-  });
-</script>
 <script>
+  const fleetID = '{{ .ID }}';
+
+  // Add/Remove port inputs
+  function addPort() {
+    const container = document.getElementById('tunnelPortsContainer');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+      <input type="text" class="form-control bg-dark text-light tunnel-port" name="tunnel_ports[]" value="">
+      <button type="button" class="btn btn-outline-danger" onclick="removePort(this)">Remove</button>
+    `;
+    container.appendChild(div);
+  }
+
+  function removePort(btn) {
+    const container = document.getElementById('tunnelPortsContainer');
+    if (container.children.length > 1) {
+      btn.parentElement.remove();
+    } else {
+      alert('At least one port is required');
+    }
+  }
+
+  // Get install command
+  function getInstallCommand(droneUID) {
+    fetch(`/fleets/${fleetID}/drones/${droneUID}/install-command`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.command) {
+          document.getElementById('installCommand').value = data.command;
+          const modal = new bootstrap.Modal(document.getElementById('installCommandModal'));
+          modal.show();
+        } else {
+          alert('Error fetching install command');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error fetching install command');
+      });
+  }
+
+  // Show config
+  function showConfig(droneUID) {
+    fetch(`/device/${droneUID}/config.json`)
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('configContent').textContent = JSON.stringify(data, null, 2);
+        const modal = new bootstrap.Modal(document.getElementById('configModal'));
+        modal.show();
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error fetching config');
+      });
+  }
+
+  // Copy install command
+  document.addEventListener('DOMContentLoaded', function() {
+    const copyBtn = document.getElementById('copyInstallCommandBtn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function() {
+        const commandInput = document.getElementById('installCommand');
+        commandInput.select();
+        commandInput.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        alert('Command copied to clipboard!');
+      });
+    }
+  });
+
+  // Delete drone
   function deleteDrone(droneUID) {
     if (confirm('Are you sure you want to delete this drone?')) {
       fetch(`/device/${droneUID}`, {
@@ -78,7 +236,7 @@
         .then(response => {
           if (response.ok) {
             alert('Drone deleted successfully');
-            location.reload();  // Refresh the page after deletion
+            location.reload();
           } else {
             alert('Error deleting drone. Please try again.');
           }

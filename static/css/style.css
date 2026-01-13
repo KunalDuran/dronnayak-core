@@ -17,12 +17,3 @@
         .card-header {
             background-color: #444;
         }
-
-        .chart-placeholder {
-            height: 200px;
-            background-color: #555;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ccc;
-        }

@@ -10,42 +10,42 @@ import (
 // Config holds all application configuration
 type Config struct {
 	// Device identification
-	UUID string `json:"uuid"`
+	UUID string `json:"uuid" bson:"uuid"`
 
 	// MAVLink configuration
-	MAVLink MAVLinkConfig `json:"mavlink"`
+	MAVLink MAVLinkConfig `json:"mavlink" bson:"mavlink"`
 
 	// Server configuration
-	Server ServerConfig `json:"server"`
+	Server ServerConfig `json:"server" bson:"server"`
 
 	// Tunnel configuration
-	Tunnel TunnelConfig `json:"tunnel"`
+	Tunnel TunnelConfig `json:"tunnel" bson:"tunnel"`
 
 	// Stats configuration
-	Stats StatsConfig `json:"stats"`
+	Stats StatsConfig `json:"stats" bson:"stats"`
 }
 
 type MAVLinkConfig struct {
-	SerialPort      string `json:"serial_port"`      // Override auto-detection
-	BaudRate        int    `json:"baud_rate"`        // Default: 57600
-	TCPAddress      string `json:"tcp_address"`      // Default: 0.0.0.0:5760
-	StreamFrequency int    `json:"stream_frequency"` // Hz, 0 = disabled
-	OutSystemID     byte   `json:"out_system_id"`    // Default: 255
+	SerialPort      string `json:"serial_port" bson:"serial_port"`           // Override auto-detection
+	BaudRate        int    `json:"baud_rate" bson:"baud_rate"`               // Default: 57600
+	TCPAddress      string `json:"tcp_address" bson:"tcp_address"`           // Default: 0.0.0.0:5760
+	StreamFrequency int    `json:"stream_frequency" bson:"stream_frequency"` // Hz, 0 = disabled
+	OutSystemID     byte   `json:"out_system_id" bson:"out_system_id"`       // Default: 255
 }
 
 type ServerConfig struct {
-	URL string `json:"url"` // Base server URL
+	URL string `json:"url" bson:"url"` // Base server URL
 }
 
 type TunnelConfig struct {
-	Ports  []string `json:"ports"`   // Ports to tunnel
-	WSPath string   `json:"ws_path"` // WebSocket path, default: /ws
+	Ports  []string `json:"ports" bson:"ports"`     // Ports to tunnel
+	WSPath string   `json:"ws_path" bson:"ws_path"` // WebSocket path, default: /ws
 }
 
 type StatsConfig struct {
-	Enabled  bool          `json:"enabled"`  // Default: true
-	Interval time.Duration `json:"interval"` // Default: 5s
-	Endpoint string        `json:"endpoint"` // Default: /device-status/{uuid}
+	Enabled  bool          `json:"enabled" bson:"enabled"`   // Default: true
+	Interval time.Duration `json:"interval" bson:"interval"` // Default: 5s
+	Endpoint string        `json:"endpoint" bson:"endpoint"` // Default: /device-status/{uuid}
 }
 
 func LoadConfig(configPath string) (*Config, error) {
