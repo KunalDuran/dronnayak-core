@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/KunalDuran/dronnayak-core/internal/data"
+	"github.com/KunalDuran/dronnayak-core/internal/web"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -146,6 +147,8 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 		http.RedirectHandler("/fleets", 302).ServeHTTP(w, r)
 		return
 	}
+
+	drone.DeviceConfig.Server.URL = web.CleanServerURL(drone.DeviceConfig.Server.URL)
 
 	template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")).Execute(w, drone)
 }

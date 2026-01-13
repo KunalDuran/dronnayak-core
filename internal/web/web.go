@@ -51,3 +51,12 @@ func WebRequest(method, url, postdata string) ([]byte, int, error) {
 	}
 	return body, statusCode, nil
 }
+
+// cleanServerURL removes http/https schema from server URL
+func CleanServerURL(url string) string {
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "ws://")
+	url = strings.TrimPrefix(url, "wss://")
+	return url
+}

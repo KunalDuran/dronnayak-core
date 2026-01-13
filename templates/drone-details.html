@@ -1,9 +1,6 @@
 {{ define "content" }}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center my-3">
     <h1 class="text-center mb-0 flex-grow-1">Drone Details - {{ .UID }}</h1>
-    <a href="/terminal/{{ .UID }}" target="_blank" class="btn btn-primary">
-        <i class="fas fa-terminal"></i> Open Terminal
-    </a>
 </div>
 
 <!-- Basic Info -->
@@ -166,6 +163,21 @@
         </div>
     </div>
 </div>
+<div class="row">
+    <!-- Disk Information -->
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Open Relays</h5>
+                {{ $root := . }}
+                {{ range $index, $port := .DeviceConfig.Tunnel.Ports }}
+                    <span>ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port }}</span>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <div class="row">
     <div class="col-md-12 mb-3">
