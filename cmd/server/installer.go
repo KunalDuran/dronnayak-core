@@ -30,7 +30,8 @@ echo "Installing systemd service..."
 cat <<EOF | sudo tee /etc/systemd/system/dronnayak.service
 [Unit]
 Description=Dronnayak Device Manager
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple

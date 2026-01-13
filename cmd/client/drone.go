@@ -139,6 +139,9 @@ func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
 					e.Channel, e.SystemID, e.ComponentID)
 
 			case *gomavlib.EventParseError:
+				if strings.Contains(e.Error.Error(), "invalid magic byte") {
+					continue // ignore noise
+				}
 				log.Printf("Parse error: %s", e.Error)
 
 			case *gomavlib.EventFrame:
@@ -168,8 +171,14 @@ func (d *Dronnayak) startTunnels() {
 		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, port)
 
 		go func(port, id string) {
-			log.Printf("Starting tunnel for port %s (ID: %s)", port, id)
-			client.CreateWebSocketTunnel(serverHost, port, d.config.Tunnel.WSPath, id)
+			defer func() {
+				log.Printf("Closing tunnel for port %s (ID: %s)", port, id)
+			}()
+			log.Println("Starting tunnel for port %s (ID: %s)", port, id)
+			err := client.CreateWebSocketTunnel(serverHost, port, d.config.Tunnel.WSPath, id)
+			if err != nil {
+				log.Println("Error in tunnel for port %s (ID: %s)", port, id, err.Error())
+			}
 		}(port, tunnelID)
 	}
 }
