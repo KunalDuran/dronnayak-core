@@ -8,18 +8,20 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/KunalDuran/dronnayak-core/internal/data"
-	"github.com/KunalDuran/gowsrelay/client"
 	"github.com/bluenviron/gomavlib/v3"
 	"github.com/bluenviron/gomavlib/v3/pkg/dialects/common"
 )
 
 // Dronnayak represents the main drone application
 type Dronnayak struct {
-	mavNode *gomavlib.Node
-	config  *data.Config
+	mavNode        *gomavlib.Node
+	config         *data.Config
+	tunnelManagers []*TunnelManager
+	wg             sync.WaitGroup
 }
 
 // NewDronnayak creates a new Dronnayak instance
@@ -51,19 +53,34 @@ func (d *Dronnayak) Run(ctx context.Context) error {
 	defer d.Close()
 
 	// Start MAVLink event processing
-	go d.processMAVLinkEvents(ctx)
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.processMAVLinkEvents(ctx)
+	}()
 
 	// Start WebSocket tunnels
-	d.startTunnels()
+	d.startTunnels(ctx)
 
 	// Start stats reporting if enabled
 	if d.config.Stats.Enabled {
-		go d.startStatsReporter(ctx)
+		d.wg.Add(1)
+		go func() {
+			defer d.wg.Done()
+			d.startStatsReporter(ctx)
+		}()
 	}
 
 	// Wait for shutdown signal
 	sig := <-sigChan
 	log.Printf("Received signal: %v, shutting down gracefully...", sig)
+
+	// Cancel context to signal all goroutines to stop
+	cancel()
+
+	// Wait for all goroutines to finish
+	d.wg.Wait()
+	log.Println("All services stopped")
 
 	return nil
 }
@@ -127,6 +144,9 @@ func (d *Dronnayak) detectSerialPort() string {
 
 // processMAVLinkEvents handles all MAVLink events
 func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
+	log.Println("MAVLink event processor started")
+	defer log.Println("MAVLink event processor stopped")
+
 	for {
 		select {
 		case evt := <-d.mavNode.Events():
@@ -158,29 +178,30 @@ func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
 	}
 }
 
-// startTunnels starts WebSocket tunnels for configured ports
-func (d *Dronnayak) startTunnels() {
+// startTunnels starts WebSocket tunnels for configured ports with reconnection
+func (d *Dronnayak) startTunnels(ctx context.Context) {
 	if len(d.config.Tunnel.Ports) == 0 {
 		log.Println("No tunnel ports configured")
 		return
 	}
 
 	serverHost := d.cleanServerURL(d.config.Server.URL)
+	d.tunnelManagers = make([]*TunnelManager, 0, len(d.config.Tunnel.Ports))
 
 	for _, port := range d.config.Tunnel.Ports {
 		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, port)
 
-		go func(port, id string) {
-			defer func() {
-				log.Printf("Closing tunnel for port %s (ID: %s)", port, id)
-			}()
-			log.Println("Starting tunnel for port %s (ID: %s)", port, id)
-			err := client.CreateWebSocketTunnel(serverHost, port, d.config.Tunnel.WSPath, id)
-			if err != nil {
-				log.Println("Error in tunnel for port %s (ID: %s)", port, id, err.Error())
-			}
-		}(port, tunnelID)
+		tm := NewTunnelManager(serverHost, port, d.config.Tunnel.WSPath, tunnelID)
+		d.tunnelManagers = append(d.tunnelManagers, tm)
+
+		d.wg.Add(1)
+		go func(manager *TunnelManager) {
+			defer d.wg.Done()
+			manager.Start(ctx)
+		}(tm)
 	}
+
+	log.Printf("Started %d tunnel(s) with auto-reconnection", len(d.config.Tunnel.Ports))
 }
 
 // cleanServerURL removes http/https schema from server URL
@@ -194,5 +215,6 @@ func (d *Dronnayak) cleanServerURL(url string) string {
 func (d *Dronnayak) Close() {
 	if d.mavNode != nil {
 		log.Println("Closing MAVLink node...")
+		d.mavNode.Close()
 	}
 }
