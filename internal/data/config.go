@@ -60,7 +60,7 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to decode config: %w", err)
 	}
 
-	config.applyDefaults()
+	config.ApplyDefaults()
 
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
@@ -69,7 +69,7 @@ func LoadConfig(configPath string) (*Config, error) {
 	return &config, nil
 }
 
-func (c *Config) applyDefaults() {
+func (c *Config) ApplyDefaults() {
 	if c.MAVLink.BaudRate == 0 {
 		c.MAVLink.BaudRate = 57600
 	}
