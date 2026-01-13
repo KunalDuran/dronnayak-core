@@ -103,9 +103,15 @@ func UpdateOne(collection string, filter map[string]interface{}, update map[stri
 	return err
 }
 
-func DeleteOne(collection string, filter bson.M) error {
+func DeleteOne(collection string, filter map[string]interface{}) error {
 	c := GetCollection(collection)
-	_, err := c.DeleteOne(context.Background(), filter)
+	
+	flt := make(bson.M)
+	for k, v := range filter {
+		flt[k] = v
+	}
+	
+	_, err := c.DeleteOne(context.Background(), flt)
 	return err
 }
 

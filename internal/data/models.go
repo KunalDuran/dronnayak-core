@@ -19,6 +19,8 @@ type Drone struct {
 	Description string        `json:"description" bson:"description"`
 	FleetID     string        `json:"fleet_id" bson:"fleet_id"`
 	Status      ResourceStats `json:"status" bson:"status"`
+
+	DeviceConfig Config `json:"device_config" bson:"device_config"`
 }
 
 type ResourceStats struct {
