@@ -2,46 +2,50 @@ package main
 
 import "fmt"
 
-func GetInstallerScript(serverPath, uuid string) string {
-	text := `# check device architecture
+func GenerateInstallerScript(serverURL, uuid string) string {
+	return fmt.Sprintf(`#!/bin/bash
+set -e
+
 ARCH=$(uname -m)
 
-mkdir -p /opt/dronnayak
-cd /opt/dronnayak
+INSTALL_DIR=/opt/dronnayak
+BIN_URL="%s/bin/${ARCH}"
+CONFIG_URL="%s/device/%s/config.json"
 
-sudo rm -rf dronnayak
+echo "Installing dronnayak for $ARCH"
 
-# download binary
-wget "%s/bin/${ARCH}" -O dronnayak
+sudo mkdir -p $INSTALL_DIR
+cd $INSTALL_DIR
 
-# make binary executable
+sudo rm -f dronnayak
+
+echo "Downloading binary..."
+wget "$BIN_URL" -O dronnayak
 chmod +x dronnayak
 
-# create config
-echo "{
-	\"uuid\": \"%s\",
-	\"server_path\": \"%s\",
-	\"tunnel_ports\": [\"5760\", \"22\"]
-}" > config.json
+echo "Fetching config..."
+wget "$CONFIG_URL" -O config.json
 
-# setup as service
-echo "[Unit]
-    Description=Device Manager
-    After=multi-user.target
+echo "Installing systemd service..."
+cat <<EOF | sudo tee /etc/systemd/system/dronnayak.service
+[Unit]
+Description=Dronnayak Device Manager
+After=network.target
 
 [Service]
-    Type=simple
-    Restart=always
-    ExecStart=/opt/dronnayak/dronnayak
+Type=simple
+Restart=always
+WorkingDirectory=/opt/dronnayak
+ExecStart=/opt/dronnayak/dronnayak
 
 [Install]
-    WantedBy=multi-user.target" > dronnayak.service
+WantedBy=multi-user.target
+EOF
 
-    
-sudo cp dronnayak.service /etc/systemd/system/dronnayak.service
 sudo systemctl daemon-reload
 sudo systemctl enable dronnayak
-sudo systemctl start dronnayak`
+sudo systemctl start dronnayak
 
-	return fmt.Sprintf(text, serverPath, uuid, serverPath)
+echo "Installation complete"
+`, serverURL, serverURL, uuid)
 }

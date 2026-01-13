@@ -150,22 +150,38 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 func registerDevice(w http.ResponseWriter, r *http.Request) {
 	fleetID := chi.URLParam(r, "fleet_id")
 	if fleetID == "" {
-		http.RedirectHandler("/", 302).ServeHTTP(w, r)
-	}
-
-	uuid := data.GenerateUID()
-	err := data.InsertOne("drone", data.Drone{UID: uuid, FleetID: fleetID})
-	if err != nil {
-		log.Println(err)
-		w.Write([]byte("error"))
+		http.Error(w, "missing fleet_id", http.StatusBadRequest)
 		return
 	}
 
-	// serverPath := getServerPath(r)
-	file := GetInstallerScript("https://dashboard.dronnayak.com", uuid)
+	uuid := data.GenerateUID()
 
-	w.Write([]byte(file))
+	err := data.InsertOne("drone", data.Drone{
+		UID:     uuid,
+		FleetID: fleetID,
+	})
+	if err != nil {
+		http.Error(w, "failed to register device", 500)
+		return
+	}
 
+	script := GenerateInstallerScript("https://dashboard.dronnayak.com", uuid)
+
+	w.Header().Set("Content-Type", "text/x-shellscript")
+	w.Write([]byte(script))
+}
+
+func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
+	uuid := chi.URLParam(r, "uuid")
+	if uuid == "" {
+		http.Error(w, "missing uuid", http.StatusBadRequest)
+		return
+	}
+
+	cfg := data.NewDefaultDeviceConfig(uuid, "https://dashboard.dronnayak.com")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cfg)
 }
 
 func deviceStatus(w http.ResponseWriter, r *http.Request) {

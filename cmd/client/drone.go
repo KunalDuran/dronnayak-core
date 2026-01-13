@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/KunalDuran/dronnayak-core/internal/data"
 	"github.com/KunalDuran/gowsrelay/client"
 	"github.com/bluenviron/gomavlib/v3"
 	"github.com/bluenviron/gomavlib/v3/pkg/dialects/common"
@@ -18,12 +19,12 @@ import (
 // Dronnayak represents the main drone application
 type Dronnayak struct {
 	mavNode *gomavlib.Node
-	config  *Config
+	config  *data.Config
 }
 
 // NewDronnayak creates a new Dronnayak instance
 func NewDronnayak(configPath string) (*Dronnayak, error) {
-	config, err := LoadConfig(configPath)
+	config, err := data.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
