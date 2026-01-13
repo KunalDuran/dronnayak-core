@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,7 +39,9 @@ func InitDB(mongoURI string) {
 }
 
 func GenerateUID() string {
-	return uuid.New().String()
+	id, _ := gonanoid.New(10)
+	return id
+	// return uuid.New().String()
 }
 
 func GetCollection(name string) *mongo.Collection {

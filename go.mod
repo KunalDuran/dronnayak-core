@@ -9,7 +9,7 @@ require (
 	github.com/KunalDuran/gowsrelay v0.0.2-0.20260112203753-a67e5fe43c95
 	github.com/bluenviron/gomavlib/v3 v3.0.0
 	github.com/go-chi/chi/v5 v5.1.0
-	github.com/google/uuid v1.6.0
+	github.com/matoous/go-nanoid/v2 v2.1.0
 	go.mongodb.org/mongo-driver v1.17.0
 )
 
