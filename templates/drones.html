@@ -2,7 +2,7 @@
 <div class="container mt-4">
   <h1 class="text-center mb-4">Drones</h1>
   <div class="d-flex justify-content-end mb-4">
-    <button class="btn btn-custom" data-bs-toggle="modal" data-bs-target="#newDroneModal">Add Drone</button>
+    <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#newDroneModal">Add Drone</button>
   </div>
   <div class="row">
     {{ range $drone := .Drones }}
@@ -11,7 +11,7 @@
         <div class="card-body">
           <h5 class="card-title">{{ if $drone.Name }}{{ $drone.Name }}{{ else }}{{ $drone.UID }}{{ end }}</h5>
           {{ if $drone.Description }}
-          <p class="card-text">{{ $drone.Description }}</p>
+          <p class="card-text">Description: {{ $drone.Description }}</p>
           {{ end }}
           <p class="card-text"><small class="">UID: {{ $drone.UID }}</small></p>
           <p class="card-text">Status: Online</p>
