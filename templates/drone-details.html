@@ -1,222 +1,372 @@
 {{ define "content" }}
-<div class="d-flex justify-content-between align-items-center my-3">
-    <h1 class="text-center mb-0 flex-grow-1">Drone Details - {{ .UID }}</h1>
-</div>
+<div class="container-fluid mt-4 mb-5 px-4">
+  <!-- Header Section -->
+  <div class="mb-4">
+    <div class="d-flex align-items-center mb-2">
+      <a href="/fleets/{{ .FleetID }}" class="text-decoration-none text-muted me-3">
+        <i class="bi bi-arrow-left"></i> Back to Fleet
+      </a>
+    </div>
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 class="fw-bold mb-2">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</h1>
+        <div class="d-flex align-items-center gap-3">
+          <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+            <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Online
+          </span>
+          <span class="text-muted">{{ .UID }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<!-- Basic Info -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Basic Information</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Name:</strong> {{ if .Name }}{{ .Name }}{{ else }}Unnamed Drone{{ end }}</p>
-                        <p><strong>Description:</strong> {{ if .Description }}{{ .Description }}{{ else }}No description{{ end }}</p>
-                        <p><strong>Fleet ID:</strong> {{ .FleetID }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Host Name:</strong> {{ .Status.HostName }}</p>
-                        <p><strong>Platform:</strong> {{ .Status.Platform }}</p>
-                        <p><strong>Boot Time:</strong> <span id="bootTime">{{ .Status.BootTime }}</span></p>
-                    </div>
+  <!-- Stats Overview Cards -->
+  <div class="row g-3 mb-4">
+    <!-- CPU Card -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="stat-icon bg-primary bg-opacity-10">
+              <i class="bi bi-cpu text-primary"></i>
+            </div>
+            <h6 class="ms-2 mb-0 fw-semibold">CPU Usage</h6>
+          </div>
+          <div class="d-flex align-items-end">
+            <h2 class="mb-0 fw-bold" id="cpuUsage">{{ .Status.CPUStats.TotalUsage }}%</h2>
+            <span class="ms-2 mb-1 text-muted small">{{ .Status.CPUStats.PhysicalCores }} cores</span>
+          </div>
+          <div class="progress mt-3" style="height: 6px;">
+            <div class="progress-bar" 
+                 role="progressbar" 
+                 id="cpuProgressBar"
+                 data-usage="{{ .Status.CPUStats.TotalUsage }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memory Card -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="stat-icon bg-success bg-opacity-10">
+              <i class="bi bi-memory text-success"></i>
+            </div>
+            <h6 class="ms-2 mb-0 fw-semibold">Memory</h6>
+          </div>
+          <div class="d-flex align-items-end">
+            <h2 class="mb-0 fw-bold">{{ .Status.MemStat.UsedGB }}</h2>
+            <span class="ms-2 mb-1 text-muted small">/ {{ .Status.MemStat.TotalGB }} GB</span>
+          </div>
+          <div class="progress mt-3" style="height: 6px;">
+            <div class="progress-bar bg-success" 
+                 role="progressbar" 
+                 id="memoryProgressBar"
+                 data-used="{{ .Status.MemStat.UsedGB }}" 
+                 data-total="{{ .Status.MemStat.TotalGB }}">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Sent Card -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="stat-icon bg-info bg-opacity-10">
+              <i class="bi bi-arrow-up-circle text-info"></i>
+            </div>
+            <h6 class="ms-2 mb-0 fw-semibold">Sent</h6>
+          </div>
+          <div class="d-flex align-items-end">
+            <h2 class="mb-0 fw-bold">{{ .Status.NetStat.SentKB }}</h2>
+            <span class="ms-2 mb-1 text-muted small">KB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Received Card -->
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100 stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="stat-icon bg-warning bg-opacity-10">
+              <i class="bi bi-arrow-down-circle text-warning"></i>
+            </div>
+            <h6 class="ms-2 mb-0 fw-semibold">Received</h6>
+          </div>
+          <div class="d-flex align-items-end">
+            <h2 class="mb-0 fw-bold">{{ .Status.NetStat.RecvKB }}</h2>
+            <span class="ms-2 mb-1 text-muted small">KB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Left Column -->
+    <div class="col-lg-6">
+      <!-- System Information -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">
+            <i class="bi bi-info-circle text-primary me-2"></i>System Information
+          </h5>
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">Host Name</small>
+                <strong>{{ .Status.HostName }}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">Platform</small>
+                <strong>{{ .Status.Platform }}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">CPU Model</small>
+                <strong class="text-truncate d-block">{{ .Status.CPUStats.Model }}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">CPU Frequency</small>
+                <strong>{{ .Status.CPUStats.Frequency }} MHz</strong>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">Boot Time</small>
+                <strong id="bootTime">{{ .Status.BootTime }}</strong>
+              </div>
+            </div>
+            {{ if .Description }}
+            <div class="col-12">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">Description</small>
+                <strong>{{ .Description }}</strong>
+              </div>
+            </div>
+            {{ end }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Disk Information -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">
+            <i class="bi bi-hdd text-primary me-2"></i>Storage
+          </h5>
+          {{ range $index, $disk := .Status.DiskStats }}
+          <div class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <strong class="d-block">{{ $disk.Path }}</strong>
+                <small class="text-muted">{{ $disk.MountPoint }}</small>
+              </div>
+              <span class="badge bg-light text-dark">
+                {{ $disk.UsedGB }} / {{ $disk.TotalGB }} GB
+              </span>
+            </div>
+            <div class="progress" style="height: 8px;">
+              <div class="progress-bar disk-progress-bar" 
+                   role="progressbar" 
+                   data-used="{{ $disk.UsedGB }}" 
+                   data-total="{{ $disk.TotalGB }}">
+              </div>
+            </div>
+          </div>
+          {{ end }}
+        </div>
+      </div>
+
+      <!-- Network Interfaces -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">
+            <i class="bi bi-diagram-3 text-primary me-2"></i>Network Interfaces
+          </h5>
+          <div class="row g-3">
+            {{ range $net := .Status.NetworkInfo }}
+            <div class="col-12">
+              <div class="border rounded p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <strong class="d-block">{{ $net.IfName }}</strong>
+                    <small class="text-muted font-monospace">{{ $net.Mac }}</small>
+                  </div>
+                  <span class="badge bg-primary">{{ $net.IP }}</span>
                 </div>
+              </div>
             </div>
+            {{ end }}
+          </div>
         </div>
+      </div>
     </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-6">
+      <!-- Open Relays -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">
+            <i class="bi bi-broadcast text-primary me-2"></i>Open Relays
+          </h5>
+          {{ $root := . }}
+          {{ range $index, $port := .DeviceConfig.Tunnel.Ports }}
+          <div class="mb-2">
+            <div class="input-group input-group-sm">
+              <input type="text" 
+                     class="form-control font-monospace bg-light" 
+                     value="ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port }}" 
+                     readonly 
+                     id="relay-{{ $index }}">
+              <button class="btn btn-outline-secondary" 
+                      type="button" 
+                      onclick="copyToClipboard('relay-{{ $index }}')">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </div>
+          {{ end }}
+        </div>
+      </div>
+
+      <!-- Live Logs -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-terminal text-primary me-2"></i>Live Logs
+            </h5>
+            <div>
+              <button id="streamLogsBtn" 
+                      class="btn btn-sm btn-primary" 
+                      onclick="toggleLogStream()">
+                <i class="bi bi-play-fill"></i> Stream
+              </button>
+              <button id="clearLogsBtn" 
+                      class="btn btn-sm btn-outline-secondary ms-2" 
+                      onclick="clearLogs()">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div id="logs" 
+               class="bg-dark text-light rounded p-3 font-monospace" 
+               style="height: 400px; overflow-y: auto; font-size: 11px; line-height: 1.6;">
+            <div class="text-muted text-center">
+              <i class="bi bi-info-circle me-2"></i>Click "Stream" to start receiving live logs
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="row">
-    <!-- CPU Information -->
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">CPU Information</h5>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Total Usage:</span>
-                        <span class="badge bg-{{ if lt .Status.CPUStats.TotalUsage 50 }}success{{ else if lt .Status.CPUStats.TotalUsage 80 }}warning{{ else }}danger{{ end }}">
-                            {{ .Status.CPUStats.TotalUsage }}%
-                        </span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Physical Cores:</span>
-                        <span>{{ .Status.CPUStats.PhysicalCores }}</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Logical Cores:</span>
-                        <span>{{ .Status.CPUStats.LogicalCores }}</span>
-                    </li>
-                    <li class="list-group-item">
-                        <strong>Model:</strong><br>
-                        <small class="text-muted">{{ .Status.CPUStats.Model }}</small>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Frequency:</span>
-                        <span>{{ .Status.CPUStats.Frequency }} MHz</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
+<style>
+  /* Card Hover Effects */
+  .stat-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
 
-    <!-- Memory Information -->
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Memory Information</h5>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Total Memory:</span>
-                        <span>{{ printf "%.2f" .Status.MemStat.TotalGB }} GB</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Used Memory:</span>
-                        <span>{{ printf "%.2f" .Status.MemStat.UsedGB }} GB</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Cached Memory:</span>
-                        <span>{{ printf "%.2f" .Status.MemStat.CachedGB }} GB</span>
-                    </li>
-                    <li class="list-group-item">
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar" role="progressbar" 
-                                 id="memoryProgressBar"
-                                 data-used="{{ .Status.MemStat.UsedGB }}" 
-                                 data-total="{{ .Status.MemStat.TotalGB }}"
-                                 aria-valuemin="0" aria-valuemax="100">
-                                <span id="memoryPercentage"></span>
-                            </div>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
+  /* Stat Icon Styling */
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
 
-<div class="row">
-    <!-- Disk Information -->
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Disk Information</h5>
-                {{ range $index, $disk := .Status.DiskStats }}
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <span><strong>{{ $disk.Path }}</strong> ({{ $disk.MountPoint }})</span>
-                        <span>{{ printf "%.2f" $disk.UsedGB }} / {{ printf "%.2f" $disk.TotalGB }} GB</span>
-                    </div>
-                    <div class="progress mt-2" style="height: 20px;">
-                        <div class="progress-bar disk-progress-bar" role="progressbar" 
-                             data-used="{{ $disk.UsedGB }}" 
-                             data-total="{{ $disk.TotalGB }}"
-                             aria-valuemin="0" aria-valuemax="100">
-                            <span class="disk-percentage"></span>
-                        </div>
-                    </div>
-                </div>
-                {{ end }}
-            </div>
-        </div>
-    </div>
+  /* Info Items */
+  .info-item strong {
+    font-size: 0.95rem;
+  }
 
-    <!-- Network Information -->
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Network Information</h5>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Data Sent:</span>
-                        <span>{{ .Status.NetStat.SentKB }} KB</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>Data Received:</span>
-                        <span>{{ .Status.NetStat.RecvKB }} KB</span>
-                    </li>
-                </ul>
-                <h6 class="mt-3">Network Interfaces:</h6>
-                {{ range .Status.NetworkInfo }}
-                <div class="card mt-2">
-                    <div class="card-body py-2">
-                        <div class="row">
-                            <div class="col-6">
-                                <small class="text-muted">Interface</small><br>
-                                <strong>{{ .IfName }}</strong>
-                            </div>
-                            <div class="col-6">
-                                <small class="text-muted">IP Address</small><br>
-                                <strong>{{ .IP }}</strong>
-                            </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-12">
-                                <small class="text-muted">MAC Address</small><br>
-                                <small>{{ .Mac }}</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{ end }}
-            </div>
-        </div>
-    </div>
-</div>
-<div class="row">
-    <!-- Disk Information -->
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Open Relays</h5>
-                {{ $root := . }}
-                {{ range $index, $port := .DeviceConfig.Tunnel.Ports }}
-                    <span>ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port }}</span>
-                {{ end }}
-            </div>
-        </div>
-    </div>
-</div>
+  /* Badge Styling */
+  .bg-success-subtle {
+    background-color: #d1f4e0 !important;
+  }
 
+  .text-success {
+    color: #0f5132 !important;
+  }
 
-<div class="row">
-    <div class="col-md-12 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0">Live Logs</h5>
-                    <div>
-                        <button id="streamLogsBtn" class="btn btn-primary" onclick="toggleLogStream()">
-                            <i class="fas fa-play"></i> Stream Logs
-                        </button>
-                        <button id="clearLogsBtn" class="btn btn-outline-secondary ms-2" onclick="clearLogs()">
-                            <i class="fas fa-trash"></i> Clear
-                        </button>
-                    </div>
-                </div>
-                <div id="logs" class="bg-dark text-light p-3 rounded" style="height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
-                    <div class="text-muted text-center">Click "Stream Logs" to start receiving live log data...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+  .border-success-subtle {
+    border-color: #badbcc !important;
+  }
 
-<div class="row">
-    <div class="col-md-12 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Drone History</h5>
-                <ul class="list-group">
-                    <li class="list-group-item">Flight 1: Completed</li>
-                    <li class="list-group-item">Flight 2: Completed</li>
-                    <li class="list-group-item">Flight 3: In Progress</li>
-                </ul>
-                <a href="#" class="btn btn-dark mt-3">Download All Logs</a>
-            </div>
-        </div>
-    </div>
-</div>
+  /* Progress Bars */
+  .progress {
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    transition: width 0.6s ease;
+  }
+
+  /* Logs Container */
+  #logs {
+    scrollbar-width: thin;
+    scrollbar-color: #495057 #212529;
+  }
+
+  #logs::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #logs::-webkit-scrollbar-track {
+    background: #212529;
+  }
+
+  #logs::-webkit-scrollbar-thumb {
+    background-color: #495057;
+    border-radius: 4px;
+  }
+
+  #logs::-webkit-scrollbar-thumb:hover {
+    background-color: #6c757d;
+  }
+
+  /* Input Group Styling */
+  .input-group-sm .form-control {
+    font-size: 0.8rem;
+  }
+
+  /* Responsive Typography */
+  @media (max-width: 768px) {
+    h1 {
+      font-size: 1.5rem;
+    }
+    
+    h2 {
+      font-size: 1.75rem;
+    }
+  }
+</style>
 
 <script>
     let logs = document.getElementById('logs');
@@ -231,11 +381,51 @@
         return date.toLocaleString();
     }
 
+    // Copy to clipboard function
+    function copyToClipboard(elementId) {
+        const input = document.getElementById(elementId);
+        input.select();
+        input.setSelectionRange(0, 99999);
+        
+        navigator.clipboard.writeText(input.value).then(function() {
+            const btn = input.nextElementSibling;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-outline-secondary');
+            
+            setTimeout(function() {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-secondary');
+            }, 2000);
+        }).catch(function() {
+            document.execCommand('copy');
+        });
+    }
+
     // Update boot time display and progress bars
     document.addEventListener('DOMContentLoaded', function() {
         const bootTimeElement = document.getElementById('bootTime');
         if (bootTimeElement) {
             bootTimeElement.textContent = formatBootTime(parseInt(bootTimeElement.textContent));
+        }
+
+        // Update CPU progress bar
+        const cpuBar = document.getElementById('cpuProgressBar');
+        if (cpuBar) {
+            const usage = parseFloat(cpuBar.dataset.usage);
+            cpuBar.style.width = usage + '%';
+            cpuBar.setAttribute('aria-valuenow', usage);
+            
+            // Color code based on usage
+            if (usage < 50) {
+                cpuBar.classList.add('bg-success');
+            } else if (usage < 80) {
+                cpuBar.classList.add('bg-warning');
+            } else {
+                cpuBar.classList.add('bg-danger');
+            }
         }
 
         // Update memory progress bar
@@ -246,7 +436,15 @@
             const percentage = (used / total) * 100;
             memoryBar.style.width = percentage + '%';
             memoryBar.setAttribute('aria-valuenow', percentage);
-            document.getElementById('memoryPercentage').textContent = percentage.toFixed(1) + '%';
+            
+            // Color code based on usage
+            if (percentage < 60) {
+                memoryBar.classList.add('bg-success');
+            } else if (percentage < 80) {
+                memoryBar.classList.add('bg-warning');
+            } else {
+                memoryBar.classList.add('bg-danger');
+            }
         }
 
         // Update disk progress bars
@@ -257,7 +455,15 @@
             const percentage = (used / total) * 100;
             bar.style.width = percentage + '%';
             bar.setAttribute('aria-valuenow', percentage);
-            bar.querySelector('.disk-percentage').textContent = percentage.toFixed(1) + '%';
+            
+            // Color code based on usage
+            if (percentage < 60) {
+                bar.classList.add('bg-primary');
+            } else if (percentage < 80) {
+                bar.classList.add('bg-warning');
+            } else {
+                bar.classList.add('bg-danger');
+            }
         });
     });
 
@@ -279,8 +485,9 @@
         socket.onopen = (event) => {
             console.log('WebSocket connection opened');
             isStreaming = true;
-            streamLogsBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Streaming';
-            streamLogsBtn.className = 'btn btn-danger';
+            streamLogsBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+            streamLogsBtn.classList.remove('btn-primary');
+            streamLogsBtn.classList.add('btn-danger');
             
             // Clear the placeholder message
             logs.innerHTML = '';
@@ -298,11 +505,12 @@
         socket.onclose = (event) => {
             console.log('WebSocket connection closed');
             isStreaming = false;
-            streamLogsBtn.innerHTML = '<i class="fas fa-play"></i> Stream Logs';
-            streamLogsBtn.className = 'btn btn-primary';
+            streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
+            streamLogsBtn.classList.remove('btn-danger');
+            streamLogsBtn.classList.add('btn-primary');
             
             if (event.code !== 1000) { // Not a normal closure
-                addLogMessage('Connection lost. Click "Stream Logs" to reconnect.', 'text-warning');
+                addLogMessage('Connection lost. Click "Stream" to reconnect.', 'text-warning');
             }
         };
 
@@ -318,8 +526,9 @@
             socket = null;
         }
         isStreaming = false;
-        streamLogsBtn.innerHTML = '<i class="fas fa-play"></i> Stream Logs';
-        streamLogsBtn.className = 'btn btn-primary';
+        streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
+        streamLogsBtn.classList.remove('btn-danger');
+        streamLogsBtn.classList.add('btn-primary');
         addLogMessage('Log streaming stopped.', 'text-info');
     }
 
@@ -333,7 +542,7 @@
     }
 
     function clearLogs() {
-        logs.innerHTML = '<div class="text-muted text-center">Logs cleared. Click "Stream Logs" to start receiving live log data...</div>';
+        logs.innerHTML = '<div class="text-muted text-center"><i class="bi bi-info-circle me-2"></i>Logs cleared. Click "Stream" to start receiving live logs</div>';
     }
 
     // Clean up on page unload

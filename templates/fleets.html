@@ -1,47 +1,349 @@
 {{ define "content" }}
-<div class="container mt-4">
-    <h1 class="text-center mb-4">Fleets</h1>
-    <div class="d-flex justify-content-between mb-4">
-        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#newFleetModal">Create New Fleet</button>
+<div class="container mt-5 mb-5">
+  <!-- Header Section -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <h1 class="fw-bold mb-1">Fleet Management</h1>
+      <p class="text-muted mb-0">
+        Organize and manage your drone fleets
+      </p>
     </div>
-    <div class="row">
-        {{ range $fleet := . }}
-        <div class="col-md-4 mb-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h5 class="card-title">{{ $fleet.Name }}</h5>
-                    <p><small>{{ $fleet.UID }}</small></p>
-                    <p class="card-text">{{ $fleet.Description }}</p>
-                    <a href="/fleets/{{ $fleet.UID }}" class="btn btn-dark">View Drones</a>
-                </div>
+  
+    <button class="btn btn-primary px-3"
+            data-bs-toggle="modal"
+            data-bs-target="#newFleetModal">
+      <i class="bi bi-plus-lg me-1"></i>
+      New Fleet
+    </button>
+  </div>
+  
+
+  <!-- Fleets Grid -->
+  <div class="row g-4">
+    {{ range $fleet := . }}
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card h-100 border-0 shadow-sm hover-lift">
+        <div class="card-body p-4">
+          <!-- Fleet Header -->
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="flex-grow-1">
+              <h5 class="card-title fw-bold mb-2">{{ $fleet.Name }}</h5>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-primary bg-opacity-10 text-primary">
+                  <i class="bi bi-collection me-1"></i>Active
+                </span>
+              </div>
             </div>
+            <div class="dropdown">
+              <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                <li><a class="dropdown-item" href="/fleets/{{ $fleet.UID }}">
+                  <i class="bi bi-eye me-2"></i>View Details
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="editFleet('{{ $fleet.UID }}', '{{ $fleet.Name }}', '{{ $fleet.Description }}'); return false;">
+                  <i class="bi bi-pencil me-2"></i>Edit
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" onclick="deleteFleet('{{ $fleet.UID }}'); return false;">
+                  <i class="bi bi-trash me-2"></i>Delete
+                </a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Fleet Description -->
+          {{ if $fleet.Description }}
+          <p class="text-muted mb-4">{{ $fleet.Description }}</p>
+          {{ else }}
+          <p class="text-muted mb-4 fst-italic">No description provided</p>
+          {{ end }}
+
+          <!-- Fleet Info -->
+          <div class="mb-4">
+            <div class="d-flex align-items-center text-muted small mb-2">
+              <i class="bi bi-fingerprint me-2"></i>
+              <span class="font-monospace">{{ $fleet.UID }}</span>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="d-grid">
+            <a href="/fleets/{{ $fleet.UID }}" class="btn btn-outline-primary">
+              <i class="bi bi-box-arrow-in-right me-1"></i>View Drones
+            </a>
+          </div>
         </div>
-        {{ end }}
+      </div>
     </div>
+    {{ end }}
+  </div>
+
+  <!-- Empty State -->
+  {{ if eq (len .) 0 }}
+  <div class="text-center py-5">
+    <div class="mb-4">
+      <i class="bi bi-collection text-muted" style="font-size: 4rem;"></i>
+    </div>
+    <h4 class="mt-3 text-muted">No fleets yet</h4>
+    <p class="text-muted">Create your first fleet to start organizing your drones</p>
+    <button class="btn btn-primary mt-3 px-4" data-bs-toggle="modal" data-bs-target="#newFleetModal">
+      <i class="bi bi-plus-circle me-2"></i>Create Your First Fleet
+    </button>
+  </div>
+  {{ end }}
 </div>
 
-<div class="modal fade" id="newFleetModal" tabindex="-1" aria-labelledby="newFleetModalLabel" aria-hidden="true" style="color:black">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="newFleetModalLabel">Create New Fleet</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="fleetName" class="form-label">Fleet Name</label>
-                        <input type="text" class="form-control" id="fleetName" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <input type="text" class="form-control" id="description" name="description" required>
-                    </div>
-                    <button type="submit" class="btn btn-dark">Create Fleet</button>
-                </form>
-            </div>
+<!-- Create New Fleet Modal -->
+<div class="modal fade" id="newFleetModal" tabindex="-1" aria-labelledby="newFleetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h4 class="modal-title fw-bold mb-1" id="newFleetModalLabel">Create New Fleet</h4>
+          <p class="text-muted small mb-0">Set up a new fleet for your drones</p>
         </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" id="createFleetForm">
+        <div class="modal-body pt-3">
+          <div class="mb-3">
+            <label for="fleetName" class="form-label fw-semibold">Fleet Name <span class="text-danger">*</span></label>
+            <input type="text" 
+                   class="form-control" 
+                   id="fleetName" 
+                   name="name" 
+                   placeholder="e.g., Delivery Fleet, Survey Team A" 
+                   required>
+            <small class="form-text text-muted">Choose a descriptive name for easy identification</small>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+            <textarea class="form-control" 
+                      id="description" 
+                      name="description" 
+                      rows="3"
+                      placeholder="Describe the purpose or use case of this fleet"
+                      required></textarea>
+            <small class="form-text text-muted">Provide context about this fleet's purpose</small>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-plus-circle me-1"></i>Create Fleet
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 </div>
 
+<!-- Edit Fleet Modal -->
+<div class="modal fade" id="editFleetModal" tabindex="-1" aria-labelledby="editFleetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h4 class="modal-title fw-bold mb-1" id="editFleetModalLabel">Edit Fleet</h4>
+          <p class="text-muted small mb-0">Update fleet information</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editFleetForm">
+        <input type="hidden" id="editFleetUID" name="uid">
+        <div class="modal-body pt-3">
+          <div class="mb-3">
+            <label for="editFleetName" class="form-label fw-semibold">Fleet Name <span class="text-danger">*</span></label>
+            <input type="text" 
+                   class="form-control" 
+                   id="editFleetName" 
+                   name="name" 
+                   required>
+          </div>
+          <div class="mb-3">
+            <label for="editDescription" class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+            <textarea class="form-control" 
+                      id="editDescription" 
+                      name="description" 
+                      rows="3"
+                      required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-circle me-1"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Card Hover Effects */
+  .hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Typography */
+  .card-title {
+    color: #2c3e50;
+  }
+
+  .font-monospace {
+    font-size: 0.85rem;
+  }
+
+  /* Modal Customizations */
+  .modal-content {
+    border: none;
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15);
+  }
+
+  .modal-header {
+    padding: 1.5rem 1.5rem 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.5rem 1.5rem;
+  }
+
+  /* Form Controls */
+  .form-control:focus,
+  .form-check-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+  }
+
+  /* Badge Styling */
+  .badge {
+    font-weight: 500;
+    padding: 0.35rem 0.65rem;
+  }
+
+  /* Dropdown Menu */
+  .dropdown-menu {
+    border: none;
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+  }
+
+  .dropdown-item {
+    padding: 0.5rem 1rem;
+  }
+
+  .dropdown-item:hover {
+    background-color: #f8f9fa;
+  }
+
+  /* Empty State */
+  .bi-collection {
+    opacity: 0.3;
+  }
+</style>
+
+<script>
+  // Edit fleet function
+  function editFleet(uid, name, description) {
+    document.getElementById('editFleetUID').value = uid;
+    document.getElementById('editFleetName').value = name;
+    document.getElementById('editDescription').value = description;
+    
+    const modal = new bootstrap.Modal(document.getElementById('editFleetModal'));
+    modal.show();
+  }
+
+  // Handle edit form submission
+  document.getElementById('editFleetForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('editFleetUID').value;
+    const name = document.getElementById('editFleetName').value;
+    const description = document.getElementById('editDescription').value;
+    
+    fetch('/fleets/' + uid, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: name,
+        description: description
+      })
+    })
+    .then(response => {
+      if (response.ok) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editFleetModal'));
+        modal.hide();
+        
+        // Show success message
+        showSuccessMessage('Fleet updated successfully');
+        
+        // Reload page after a short delay
+        setTimeout(() => {
+          location.reload();
+        }, 1500);
+      } else {
+        alert('Error updating fleet. Please try again.');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Something went wrong.');
+    });
+  });
+
+  // Delete fleet function
+  function deleteFleet(uid) {
+    if (confirm('Are you sure you want to delete this fleet? This action cannot be undone.')) {
+      fetch('/fleets/' + uid, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          showSuccessMessage('Fleet deleted successfully');
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
+        } else {
+          alert('Error deleting fleet. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Something went wrong.');
+      });
+    }
+  }
+
+  // Show success message
+  function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.innerHTML = `
+      <i class="bi bi-check-circle me-2"></i>${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 3000);
+  }
+</script>
 {{ end }}
