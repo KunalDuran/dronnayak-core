@@ -4,16 +4,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dronnayak</title>
+    <title>Dronnayak - Drone Fleet Management</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/static/css/style.css" type="text/css">
+    <style>
+        /* Custom Navbar Styling */
+        .navbar-custom {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            padding: 0.75rem 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #0d6efd !important;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .navbar-brand i {
+            font-size: 1.75rem;
+        }
+
+        .nav-link {
+            color: #495057 !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            color: #0d6efd !important;
+            background-color: #f8f9fa;
+        }
+
+        .nav-link.active {
+            color: #0d6efd !important;
+            background-color: #e7f1ff;
+        }
+
+        /* User Dropdown */
+        .user-dropdown .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .user-dropdown .dropdown-toggle:hover {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+        }
+
+        .user-dropdown .dropdown-toggle::after {
+            margin-left: 0.5rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            padding: 0.5rem;
+            min-width: 200px;
+        }
+
+        .dropdown-item {
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .dropdown-divider {
+            margin: 0.5rem 0;
+        }
+
+        /* Mobile navbar */
+        @media (max-width: 991.98px) {
+            .navbar-nav {
+                padding-top: 1rem;
+            }
+
+            .nav-link {
+                margin-bottom: 0.25rem;
+            }
+
+            .user-dropdown {
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid #dee2e6;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+
+        .footer-link {
+            color: #6c757d;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+
+        .footer-link:hover {
+            color: #0d6efd;
+        }
+    </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand text-secondary" href="/">
                 Dronnayak
             </a>
 
@@ -23,30 +159,164 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav me-auto ms-lg-4">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-house-door me-1"></i>Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/fleets">Fleets</a>
+                        <a class="nav-link" href="/fleets">
+                            <i class="bi bi-collection me-1"></i>Fleets
+                        </a>
                     </li>
+                    <!-- Uncomment when ready -->
                     <!-- <li class="nav-item">
-                        <a class="nav-link" href="/drones">Drones</a>
+                        <a class="nav-link" href="/analytics">
+                            <i class="bi bi-graph-up me-1"></i>Analytics
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/profile">Profile</a>
+                        <a class="nav-link" href="/deployments">
+                            <i class="bi bi-code-square me-1"></i>Deployments
+                        </a>
                     </li> -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
+                </ul>
+
+                <!-- User Menu -->
+                <ul class="navbar-nav ms-auto">
+                    <!-- Notifications (optional for future) -->
+                    <!-- <li class="nav-item dropdown me-2">
+                        <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                                3
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Notifications</h6></li>
+                            <li><a class="dropdown-item small" href="#">No new notifications</a></li>
+                        </ul>
+                    </li> -->
+
+                    <!-- User Dropdown -->
+                    <li class="nav-item dropdown user-dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <span class="d-none d-md-inline">Account</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="/profile">
+                                    <i class="bi bi-person-circle me-2"></i>Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/settings">
+                                    <i class="bi bi-gear me-2"></i>Settings
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="/docs">
+                                    <i class="bi bi-book me-2"></i>Documentation
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/support">
+                                    <i class="bi bi-question-circle me-2"></i>Support
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="/logout">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
-    <div class="container">
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
         {{ block "content" . }}
         {{ end }}
     </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-drone text-primary me-2" style="font-size: 1.25rem;"></i>
+                        <strong>Dronnayak</strong>
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Drone fleet connectivity and management platform
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-6 col-sm-4">
+                            <h6 class="small fw-semibold mb-2">Product</h6>
+                            <ul class="list-unstyled small">
+                                <li><a href="/features" class="footer-link">Features</a></li>
+                                <li><a href="/pricing" class="footer-link">Pricing</a></li>
+                                <li><a href="/docs" class="footer-link">Documentation</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-6 col-sm-4">
+                            <h6 class="small fw-semibold mb-2">Support</h6>
+                            <ul class="list-unstyled small">
+                                <li><a href="/help" class="footer-link">Help Center</a></li>
+                                <li><a href="/contact" class="footer-link">Contact</a></li>
+                                <li><a href="/status" class="footer-link">Status</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-12 col-sm-4 mt-3 mt-sm-0">
+                            <h6 class="small fw-semibold mb-2">Legal</h6>
+                            <ul class="list-unstyled small">
+                                <li><a href="/privacy" class="footer-link">Privacy</a></li>
+                                <li><a href="/terms" class="footer-link">Terms</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <p class="text-muted small mb-0">
+                    © 2024 Dronnayak. All rights reserved.
+                </p>
+                <div class="d-flex gap-3">
+                    <a href="#" class="text-muted"><i class="bi bi-twitter"></i></a>
+                    <a href="#" class="text-muted"><i class="bi bi-linkedin"></i></a>
+                    <a href="#" class="text-muted"><i class="bi bi-github"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add active class to current page nav link
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+            
+            navLinks.forEach(link => {
+                const linkPath = new URL(link.href).pathname;
+                if (linkPath === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

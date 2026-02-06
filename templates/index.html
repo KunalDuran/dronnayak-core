@@ -1,131 +1,429 @@
 {{ define "content" }}
-
-<div class="container my-3">
-    <h1 class="text-center mb-4">Welcome to the Dronnayak Dashboard</h1>
-    <p class="text-center mb-4">Monitor and manage your fleets of drones with real-time data and analysis.</p>
-
-
-    <!-- Current Capabilities -->
-    <div class="row mb-3">
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4 class="card-title">Live Telemetry</h4>
-                    <p class="">
-                        Stream MAVLink telemetry from a Pixhawk-connected
-                        companion computer to the cloud in near real-time.
-                    </p>
-                </div>
-            </div>
+<div class="container-fluid mt-4 mb-5 px-4">
+  <!-- Welcome Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="fw-bold mb-2">Dashboard</h1>
+          <p class="text-muted mb-0">Monitor and manage your drone fleet operations</p>
         </div>
-
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4 class="card-title">Connection State</h4>
-                    <p class="">
-                        Observe drone connectivity, online/offline transitions,
-                        and basic link health under unreliable networks.
-                    </p>
-                </div>
-            </div>
+        <div class="d-flex gap-2">
+          <a href="/fleets" class="btn btn-outline-primary">
+            <i class="bi bi-collection me-1"></i>View Fleets
+          </a>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#quickStartModal">
+            <i class="bi bi-rocket-takeoff me-1"></i>Quick Start
+          </button>
         </div>
+      </div>
+    </div>
+  </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4 class="card-title">Telemetry History</h4>
-                    <p class="">
-                        Inspect recent telemetry snapshots for post-flight
-                        analysis and system-level understanding.
-                    </p>
-                </div>
+  <!-- Fleet Overview Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h5 class="fw-semibold mb-3">Fleet Overview</h5>
+    </div>
+    
+    <div class="col-md-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="text-muted mb-1 small">Total Fleets</p>
+              <h2 class="fw-bold mb-0">0</h2>
             </div>
+            <div class="stat-icon bg-primary bg-opacity-10">
+              <i class="bi bi-collection text-primary"></i>
+            </div>
+          </div>
+          <a href="/fleets" class="text-decoration-none small">
+            Manage fleets <i class="bi bi-arrow-right"></i>
+          </a>
         </div>
+      </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="row">
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Total Fleets</h5>
-                    <p class="card-text display-4">0</p>
-                </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="text-muted mb-1 small">Total Drones</p>
+              <h2 class="fw-bold mb-0">0</h2>
             </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Total Drones</h5>
-                    <p class="card-text display-4">0</p>
-                </div>
+            <div class="stat-icon bg-success bg-opacity-10">
+              <i class="bi bi-robot text-success"></i>
             </div>
+          </div>
+          <p class="text-muted small mb-0">Across all fleets</p>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Online Drones</h5>
-                    <p class="card-text display-4">0</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Flights Logged</h5>
-                    <p class="card-text display-4">-</p>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-
-
-    <!-- Minimal Stats (Exploratory, not KPIs) -->
-    <div class="row">
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Connected Devices</h5>
-                    <p class="card-text display-4">0</p>
-                </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="text-muted mb-1 small">Online Now</p>
+              <h2 class="fw-bold mb-0 text-success">0</h2>
             </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Active Streams</h5>
-                    <p class="card-text display-4">0</p>
-                </div>
+            <div class="stat-icon bg-success bg-opacity-10">
+              <i class="bi bi-wifi text-success"></i>
             </div>
+          </div>
+          <p class="text-muted small mb-0">
+            <span class="text-success">●</span> Real-time connectivity
+          </p>
         </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Messages Observed</h5>
-                    <p class="card-text display-4">—</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card text-center shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Last Telemetry Update</h5>
-                    <p class="card-text display-4">—</p>
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="text-center">
-        <a href="/fleets" class="btn btn-secondary me-2">View All Fleets</a>
+    <div class="col-md-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <p class="text-muted mb-1 small">Active Streams</p>
+              <h2 class="fw-bold mb-0">0</h2>
+            </div>
+            <div class="stat-icon bg-info bg-opacity-10">
+              <i class="bi bi-broadcast text-info"></i>
+            </div>
+          </div>
+          <p class="text-muted small mb-0">Live telemetry streams</p>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Platform Capabilities -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-semibold mb-0">Platform Capabilities</h5>
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
+          <i class="bi bi-question-circle me-1"></i>Learn More
+        </button>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100 capability-card">
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <div class="capability-icon bg-primary bg-opacity-10 mb-3">
+              <i class="bi bi-speedometer2 text-primary"></i>
+            </div>
+            <h5 class="fw-bold mb-2">Real-Time Telemetry</h5>
+          </div>
+          <p class="text-muted mb-3">
+            Stream MAVLink telemetry from Pixhawk-connected companion computers to the cloud with near-zero latency.
+          </p>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Live position & altitude</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Battery & sensor data</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Flight mode tracking</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100 capability-card">
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <div class="capability-icon bg-success bg-opacity-10 mb-3">
+              <i class="bi bi-reception-4 text-success"></i>
+            </div>
+            <h5 class="fw-bold mb-2">Fleet Management</h5>
+          </div>
+          <p class="text-muted mb-3">
+            Monitor drone connectivity, track online/offline transitions, and assess link health even under unreliable networks.
+          </p>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Connection monitoring</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Health diagnostics</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Network resilience</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+      <div class="card border-0 shadow-sm h-100 capability-card">
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <div class="capability-icon bg-warning bg-opacity-10 mb-3">
+              <i class="bi bi-code-square text-warning"></i>
+            </div>
+            <h5 class="fw-bold mb-2">Edge Deployment</h5>
+          </div>
+          <p class="text-muted mb-3">
+            Deploy and manage applications directly on companion computers attached to your drones for edge processing.
+          </p>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Remote deployment</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Application management</li>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Edge computing</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity & Quick Actions -->
+  <div class="row g-3">
+    <!-- Recent Activity -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">Recent Activity</h5>
+          <div class="text-center py-5">
+            <i class="bi bi-clock-history text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+            <p class="text-muted mt-3 mb-0">No recent activity</p>
+            <p class="text-muted small">Activity from your fleet will appear here</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">Quick Actions</h5>
+          <div class="d-grid gap-2">
+            <a href="/fleets" class="btn btn-outline-primary text-start">
+              <i class="bi bi-plus-circle me-2"></i>Create New Fleet
+            </a>
+            <a href="/fleets" class="btn btn-outline-primary text-start">
+              <i class="bi bi-drone me-2"></i>Add Drone
+            </a>
+            <button class="btn btn-outline-secondary text-start" data-bs-toggle="modal" data-bs-target="#helpModal">
+              <i class="bi bi-book me-2"></i>View Documentation
+            </button>
+            <button class="btn btn-outline-secondary text-start" data-bs-toggle="modal" data-bs-target="#quickStartModal">
+              <i class="bi bi-rocket-takeoff me-2"></i>Setup Guide
+            </button>
+          </div>
+
+          <!-- System Status -->
+          <div class="mt-4 pt-3 border-top">
+            <h6 class="fw-semibold mb-3 small">System Status</h6>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small text-muted">Platform</span>
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-circle-fill" style="font-size: 0.4rem;"></i> Operational
+              </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="small text-muted">API Services</span>
+              <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="bi bi-circle-fill" style="font-size: 0.4rem;"></i> Online
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<!-- Quick Start Modal -->
+<div class="modal fade" id="quickStartModal" tabindex="-1" aria-labelledby="quickStartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h4 class="modal-title fw-bold mb-1" id="quickStartModalLabel">
+            <i class="bi bi-rocket-takeoff text-primary me-2"></i>Quick Start Guide
+          </h4>
+          <p class="text-muted small mb-0">Get your drones connected in minutes</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Step 1 -->
+        <div class="d-flex mb-4">
+          <div class="flex-shrink-0">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <strong>1</strong>
+            </div>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="fw-bold mb-2">Create a Fleet</h6>
+            <p class="text-muted small mb-2">Organize your drones into fleets for better management and monitoring.</p>
+            <a href="/fleets" class="btn btn-sm btn-outline-primary">Create Fleet</a>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="d-flex mb-4">
+          <div class="flex-shrink-0">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <strong>2</strong>
+            </div>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="fw-bold mb-2">Add Your Drones</h6>
+            <p class="text-muted small mb-2">Register each drone with its companion computer configuration and MAVLink settings.</p>
+            <a href="/fleets" class="btn btn-sm btn-outline-primary">Add Drone</a>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="d-flex mb-4">
+          <div class="flex-shrink-0">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <strong>3</strong>
+            </div>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="fw-bold mb-2">Install Agent</h6>
+            <p class="text-muted small mb-0">Run the install command on your companion computer to establish connection.</p>
+            <code class="d-block bg-light p-2 rounded small mt-2">curl -sSL install.dronnayak.io | bash</code>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="d-flex">
+          <div class="flex-shrink-0">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <strong>4</strong>
+            </div>
+          </div>
+          <div class="flex-grow-1 ms-3">
+            <h6 class="fw-bold mb-2">Monitor & Manage</h6>
+            <p class="text-muted small mb-0">Start monitoring real-time telemetry, manage applications, and track your fleet's performance.</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h4 class="modal-title fw-bold mb-1" id="helpModalLabel">
+            <i class="bi bi-question-circle text-primary me-2"></i>Platform Documentation
+          </h4>
+          <p class="text-muted small mb-0">Learn how to use Dronnayak effectively</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="card border">
+              <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-book text-primary me-2"></i>Getting Started</h6>
+                <p class="text-muted small mb-2">Learn the basics of fleet and drone management</p>
+                <a href="#" class="small text-decoration-none">Read guide →</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border">
+              <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-code-square text-primary me-2"></i>API Reference</h6>
+                <p class="text-muted small mb-2">Integrate Dronnayak with your systems</p>
+                <a href="#" class="small text-decoration-none">View docs →</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border">
+              <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-broadcast text-primary me-2"></i>Telemetry Guide</h6>
+                <p class="text-muted small mb-2">Understand MAVLink streaming and data</p>
+                <a href="#" class="small text-decoration-none">Learn more →</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border">
+              <div class="card-body">
+                <h6 class="fw-bold mb-2"><i class="bi bi-tools text-primary me-2"></i>Troubleshooting</h6>
+                <p class="text-muted small mb-2">Solve common connectivity issues</p>
+                <a href="#" class="small text-decoration-none">Get help →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Stat Icons */
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+
+  /* Capability Cards */
+  .capability-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .capability-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .capability-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+  }
+
+  /* Badge Styling */
+  .bg-success-subtle {
+    background-color: #d1f4e0 !important;
+  }
+
+  .text-success {
+    color: #0f5132 !important;
+  }
+
+  .border-success-subtle {
+    border-color: #badbcc !important;
+  }
+
+  /* Quick Actions Buttons */
+  .btn-outline-primary.text-start:hover,
+  .btn-outline-secondary.text-start:hover {
+    transform: translateX(4px);
+    transition: transform 0.2s ease;
+  }
+</style>
+
+<script>
+  // Auto-dismiss modals can be added here if needed
+  // Could also add dynamic data loading for stats
+</script>
 
 {{ end }}
