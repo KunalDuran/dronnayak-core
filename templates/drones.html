@@ -39,8 +39,8 @@
                 <i class="bi bi-three-dots-vertical"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                <li><a class="dropdown-item" href="/device/{{ $drone.UID }}">
-                  <i class="bi bi-eye me-2"></i>View Details
+                <li><a class="dropdown-item" onclick="showConfig('{{ $drone.UID }}')">
+                  <i class="bi bi-eye me-2"></i>View Config
                 </a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="#" onclick="deleteDrone('{{ $drone.UID }}'); return false;">
@@ -64,9 +64,9 @@
 
           <!-- Action Buttons -->
           <div class="d-grid gap-2">
-            <button class="btn btn-outline-primary btn-sm" onclick="showConfig('{{ $drone.UID }}')">
-              <i class="bi bi-gear me-1"></i>View Config
-            </button>
+            <a class="btn btn-outline-primary btn-sm"  href="/device/{{ $drone.UID }}">
+              <i class="bi bi-gear me-1"></i>View Details
+            </a>
             <button class="btn btn-outline-secondary btn-sm" onclick="getInstallCommand('{{ $drone.UID }}')">
               <i class="bi bi-terminal me-1"></i>Install Command
             </button>

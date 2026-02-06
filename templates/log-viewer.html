@@ -1,0 +1,354 @@
+{{ define "content" }}
+
+<div class="container-fluid px-0" style="height: calc(100vh - 56px); display: flex; flex-direction: column;">
+
+    <!-- Logs Header -->
+
+    <div class="logs-header bg-white border-bottom px-4 py-3">
+        <div class="d-flex align-items-center gap-3">
+
+            <!-- Back Button -->
+            <a href="/device/{{ .UID }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+
+            <!-- Log Source Selector -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="logSourceDropdown"
+                    data-bs-toggle="dropdown">
+                    <i class="bi bi-file-text me-2"></i>All logs
+                </button>
+
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item active" href="#" onclick="selectLogSource(event,'all')">All logs</a>
+                    </li>
+                    <li><a class="dropdown-item" href="#" onclick="selectLogSource(event,'system')">System logs</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectLogSource(event,'mavlink')">MAVLink logs</a>
+                    </li>
+                    <li><a class="dropdown-item" href="#" onclick="selectLogSource(event,'app')">Application logs</a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Search -->
+            <div class="flex-grow-1" style="max-width: 600px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0" id="logSearchInput"
+                        placeholder="Search logs..." oninput="filterLogs()">
+                </div>
+            </div>
+
+            <!-- Live Tail Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-dark dropdown-toggle d-flex align-items-center gap-2" id="liveTailBtn"
+                    data-bs-toggle="dropdown">
+                    <i class="bi bi-lightning-charge-fill"></i>
+                    <span id="liveTailLabel">Live tail</span>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item active" href="#" onclick="selectTimeRange(event,'live')">
+                            <i class="bi bi-lightning-charge me-2"></i>Live tail
+                        </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'1h')">Last hour</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'4h')">Last 4 hours</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'24h')">Last 24 hours</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'2d')">Last 2 days</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'7d')">Last 7 days</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'14d')">Last 14 days</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'30d')">Last 30 days</a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li><a class="dropdown-item" href="#" onclick="selectTimeRange(event,'custom')">
+                            <i class="bi bi-calendar me-2"></i>Custom
+                        </a></li>
+                </ul>
+            </div>
+
+            <!-- More Options -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary" data-bs-toggle="dropdown">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="downloadLogs()">
+                            <i class="bi bi-download me-2"></i>Download logs
+                        </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="clearLogs()">
+                            <i class="bi bi-trash me-2"></i>Clear display
+                        </a></li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Logs Area -->
+
+    <div class="d-flex flex-grow-1 overflow-hidden flex-column">
+
+        <div class="bg-light border-bottom px-4 py-2">
+            <small class="text-muted fw-semibold" id="currentDate">Loading...</small>
+        </div>
+
+        <div id="logsContainer" class="flex-grow-1 overflow-auto bg-white">
+            <div id="logs" class="logs-content">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Click "Live tail" to start streaming logs
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .logs-content {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        padding: 1rem;
+    }
+
+    .log-entry {
+        padding: 0.25rem 0;
+        border-left: 3px solid transparent;
+        padding-left: 0.75rem;
+        margin-left: -0.75rem;
+        transition: all 0.15s ease;
+    }
+
+    .log-entry:hover {
+        background-color: #f8f9fa;
+        border-left-color: #0d6efd;
+    }
+
+    .log-entry.selected {
+        background-color: #e7f1ff;
+        border-left-color: #0d6efd;
+    }
+
+    .log-timestamp {
+        color: #6c757d;
+        font-weight: 500;
+        min-width: 140px;
+        display: inline-block;
+    }
+
+    .log-level-info {
+        color: #0d6efd;
+        font-weight: 600;
+    }
+
+    .log-level-warn {
+        color: #fd7e14;
+        font-weight: 600;
+    }
+
+    .log-level-error {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .log-level-debug {
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    #logsContainer::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    #logsContainer::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 6px;
+    }
+</style>
+
+<script>
+    let socket = null;
+    let isLiveTail = false;
+    let selectedTimeRange = 'live';
+    let logBuffer = [];
+    let currentLogSource = 'all';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateDateDisplay();
+        setInterval(updateDateDisplay, 60000);
+    });
+
+    function updateDateDisplay() {
+        const now = new Date();
+        document.getElementById('currentDate').textContent =
+            now.toLocaleDateString('en-US',
+                { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function selectTimeRange(e, range) {
+        e.preventDefault();
+
+        selectedTimeRange = range;
+
+        document.querySelectorAll('#liveTailBtn + .dropdown-menu .dropdown-item')
+            .forEach(i => i.classList.remove('active'));
+
+        e.currentTarget.classList.add('active');
+
+        document.getElementById('liveTailLabel').textContent =
+            e.currentTarget.textContent.trim();
+
+        if (range === 'live') startLiveTail();
+        else {
+            stopLiveTail();
+            loadHistoricalLogs(range);
+        }
+    }
+
+    function startLiveTail() {
+        if (isLiveTail) return;
+
+        if (socket) socket.close();
+
+        isLiveTail = true;
+        document.getElementById('logs').innerHTML = '';
+
+        socket = new WebSocket(
+            'ws://localhost:8090/ws?role=subscriber&topic={{ .UID }}_5760'
+        );
+
+        socket.onopen = () => addLogEntry('Connected to log stream...', 'info');
+
+        socket.onmessage = async (event) => {
+            const data =
+                typeof event.data === 'string'
+                    ? event.data
+                    : await event.data.text();
+
+            addLogEntry(data, 'info');
+        };
+
+        socket.onclose = (event) => {
+            isLiveTail = false;
+            if (event.code !== 1000)
+                addLogEntry('Connection lost.', 'warn');
+        };
+
+        socket.onerror = () =>
+            addLogEntry('Connection error occurred.', 'error');
+    }
+
+    function stopLiveTail() {
+        if (!isLiveTail) return;
+
+        if (socket) {
+            socket.close(1000, 'User stopped streaming');
+            socket = null;
+        }
+
+        isLiveTail = false;
+        addLogEntry('Streaming stopped.', 'info');
+    }
+
+    function loadHistoricalLogs(range) {
+        document.getElementById('logs').innerHTML =
+            `<div class="text-center py-5 text-muted">
+      Loading logs for ${range}...
+    </div>`;
+    }
+
+    function addLogEntry(message, level = 'info') {
+        const logsDiv = document.getElementById('logs');
+        const timestamp =
+            new Date().toLocaleTimeString('en-US', { hour12: true });
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML =
+            `<span class="log-timestamp">${timestamp}</span>
+     <span class="log-level-${level}">==> </span>
+     <span>${escapeHtml(message)}</span>`;
+
+        entry.onclick = () => {
+            document.querySelectorAll('.log-entry')
+                .forEach(e => e.classList.remove('selected'));
+            entry.classList.add('selected');
+        };
+
+        logsDiv.appendChild(entry);
+        logBuffer.push({ timestamp, level, message });
+
+        const container = document.getElementById('logsContainer');
+        container.scrollTop = container.scrollHeight;
+
+        if (logBuffer.length > 1000) {
+            logBuffer.shift();
+            logsDiv.removeChild(logsDiv.firstChild);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function filterLogs() {
+        const term =
+            document.getElementById('logSearchInput')
+                .value.toLowerCase();
+
+        document.querySelectorAll('.log-entry')
+            .forEach(e =>
+                e.style.display =
+                e.textContent.toLowerCase().includes(term)
+                    ? 'block' : 'none');
+    }
+
+    function selectLogSource(e, source) {
+        e.preventDefault();
+        currentLogSource = source;
+
+        document.querySelectorAll('#logSourceDropdown + .dropdown-menu .dropdown-item')
+            .forEach(i => i.classList.remove('active'));
+
+        e.currentTarget.classList.add('active');
+
+        document.getElementById('logSourceDropdown').innerHTML =
+            `<i class="bi bi-file-text me-2"></i>${e.currentTarget.textContent}`;
+    }
+
+    function clearLogs() {
+        document.getElementById('logs').innerHTML =
+            '<div class="text-center py-5 text-muted">Logs cleared</div>';
+        logBuffer = [];
+    }
+
+    function downloadLogs() {
+        const text = logBuffer
+            .map(l => `${l.timestamp} [${l.level}] ${l.message}`)
+            .join('\n');
+
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logs-${Date.now()}.txt`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if (socket) socket.close();
+    });
+</script>
+
+{{ end }}

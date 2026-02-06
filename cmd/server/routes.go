@@ -389,3 +389,7 @@ func getServerPath(r *http.Request) string {
 
 	return baseURL
 }
+
+func logViewer(w http.ResponseWriter, r *http.Request) {
+	template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")).Execute(w, nil)
+}

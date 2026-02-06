@@ -52,6 +52,7 @@ func main() {
 		rauth.Get("/fleets/{fleet_id}/drones/{drone_id}/install-command", getInstallCommand)
 		rauth.Get("/device/{drone_id}", deviceDetails)
 		rauth.Delete("/device/{drone_id}", deviceDetails)
+		rauth.Get("/device/{drone_id}/logs", logViewer)
 	})
 
 	// Public routes for device installation
