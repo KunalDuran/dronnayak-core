@@ -192,6 +192,9 @@ func (d *Dronnayak) startTunnels(ctx context.Context) {
 		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, port)
 
 		tm := NewTunnelManager(serverHost, port, d.config.Tunnel.WSPath, tunnelID)
+		if strings.Contains(d.config.Server.URL, "https") {
+			tm.wsScheme = "wss"
+		}
 		d.tunnelManagers = append(d.tunnelManagers, tm)
 
 		d.wg.Add(1)

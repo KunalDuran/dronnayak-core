@@ -14,6 +14,7 @@ type TunnelManager struct {
 	port       string
 	wsPath     string
 	tunnelID   string
+	wsScheme   string
 
 	maxRetries int
 	baseDelay  time.Duration
@@ -26,6 +27,7 @@ func NewTunnelManager(serverHost, port, wsPath, tunnelID string) *TunnelManager 
 		serverHost: serverHost,
 		port:       port,
 		wsPath:     wsPath,
+		wsScheme:   "ws",
 		tunnelID:   tunnelID,
 		maxRetries: -1, // infinite retries
 		baseDelay:  2 * time.Second,
@@ -45,7 +47,14 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 			log.Printf("Tunnel for port %s (ID: %s) shutting down", tm.port, tm.tunnelID)
 			return
 		default:
-			err := client.CreateWebSocketTunnel(tm.serverHost, tm.port, tm.wsPath, tm.tunnelID)
+			tunConfig := client.TunnelConfig{
+				Topic:  tm.tunnelID,
+				Host:   tm.serverHost,
+				Port:   tm.port,
+				Path:   tm.wsPath,
+				Scheme: tm.wsScheme,
+			}
+			err := client.CreateWebSocketTunnel(tunConfig)
 
 			if err != nil {
 				retryCount++
