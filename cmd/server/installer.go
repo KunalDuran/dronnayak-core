@@ -9,7 +9,7 @@ set -e
 ARCH=$(uname -m)
 
 INSTALL_DIR=/opt/dronnayak
-BIN_URL="%s/bin/${ARCH}"
+BIN_URL="%s${ARCH}"
 CONFIG_URL="%s/device/%s/config.json"
 
 echo "Installing dronnayak for $ARCH"
@@ -48,5 +48,5 @@ sudo systemctl enable dronnayak
 sudo systemctl start dronnayak
 
 echo "Installation complete"
-`, serverURL, serverURL, uuid)
+`, "https://pub-5a597633002347f38a547cb4b17dfd60.r2.dev/bin/", serverURL, uuid)
 }
