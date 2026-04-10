@@ -320,6 +320,7 @@ func deviceStatus(w http.ResponseWriter, r *http.Request) {
 	var deviceStatus data.ResourceStats
 	json.NewDecoder(r.Body).Decode(&deviceStatus)
 
+	deviceStatus.LastUpdated = time.Now().Unix()
 	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": deviceStatus}); err != nil {
 		log.Println("Error updating drone status: ", err)
 		w.Write([]byte("error"))

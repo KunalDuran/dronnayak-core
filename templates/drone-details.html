@@ -144,10 +144,16 @@
                 <strong>{{ .Status.CPUStats.Frequency }} MHz</strong>
               </div>
             </div>
-            <div class="col-12">
+            <div class="col-6">
               <div class="info-item">
                 <small class="text-muted d-block mb-1">Boot Time</small>
                 <strong id="bootTime">{{ .Status.BootTime }}</strong>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="info-item">
+                <small class="text-muted d-block mb-1">Last Updated</small>
+                <strong id="lastUpdated">{{ .Status.LastUpdated }}</strong>
               </div>
             </div>
             {{ if .Description }}
@@ -409,6 +415,11 @@
         const bootTimeElement = document.getElementById('bootTime');
         if (bootTimeElement) {
             bootTimeElement.textContent = formatBootTime(parseInt(bootTimeElement.textContent));
+        }
+
+        const lastUpdatedElement = document.getElementById('lastUpdated');
+        if (lastUpdatedElement) {
+            lastUpdatedElement.textContent = formatBootTime(parseInt(lastUpdatedElement.textContent));
         }
 
         // Update CPU progress bar

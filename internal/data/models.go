@@ -32,6 +32,8 @@ type ResourceStats struct {
 	HostName    string        `json:"host_name"`
 	Platform    string        `json:"platform"`
 	BootTime    uint64        `json:"boot_time"`
+
+	LastUpdated int64 `json:"last_updated" bson:"last_updated"`
 }
 
 type DiskInfo struct {

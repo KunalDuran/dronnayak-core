@@ -40,6 +40,7 @@ func main() {
 	r.HandleFunc("/tcp", server.HandleTCPProxy)
 	r.HandleFunc("/status", server.HandleStatus)
 	r.HandleFunc("/health", server.HandleHealth)
+	r.HandleFunc("/persistence", server.HandleAdminPersist)
 
 	r.Group(func(rauth chi.Router) {
 		rauth.Use(SessionAuth)

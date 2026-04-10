@@ -6,7 +6,7 @@ toolchain go1.24.7
 
 require (
 	github.com/KunalDuran/devstat v0.0.0-20250910131446-974c4d16760c
-	github.com/KunalDuran/gowsrelay v0.0.2-0.20260206160610-9c937feefcc2
+	github.com/KunalDuran/gowsrelay v0.0.2-0.20260410192039-6c394a4306bc
 	github.com/bluenviron/gomavlib/v3 v3.0.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/matoous/go-nanoid/v2 v2.1.0
