@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,67 +13,100 @@ import (
 	"github.com/KunalDuran/dronnayak-core/internal/data"
 	"github.com/KunalDuran/dronnayak-core/internal/web"
 	"github.com/go-chi/chi/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	tmpl     map[string]*template.Template
+	validUID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,50}$`)
+)
+
+func initTemplates() {
+	tmpl = map[string]*template.Template{
+		"index":        template.Must(template.ParseFiles("templates/base.html", "templates/index.html")),
+		"login":        template.Must(template.ParseFiles("templates/login.html")),
+		"signup":       template.Must(template.ParseFiles("templates/signup.html")),
+		"fleets":       template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
+		"drones":       template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
+		"drone-details": template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
+		"log-viewer":   template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")),
+	}
+}
+
+func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+	t, ok := tmpl[name]
+	if !ok {
+		http.Error(w, "template not found", http.StatusInternalServerError)
+		return
+	}
+	if err := t.Execute(w, data); err != nil {
+		log.Printf("template %s execution error: %v", name, err)
+	}
+}
+
 func index(w http.ResponseWriter, r *http.Request) {
-	template.Must(template.ParseFiles("templates/base.html", "templates/index.html")).Execute(w, nil)
+	renderTemplate(w, "index", nil)
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 
-		filter := map[string]interface{}{"email": r.Form.Get("email"), "password": r.Form.Get("password")}
+		email := r.Form.Get("email")
+		password := r.Form.Get("password")
+
 		var user data.User
-		err := data.FindOne("user", filter, &user)
+		err := data.FindOne("user", map[string]interface{}{"email": email}, &user)
+		if err != nil || user.Email == "" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		token, err := generateSessionToken()
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusUnauthorized)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		if user.Email == "" {
-			http.Redirect(w, r, "/login", http.StatusUnauthorized)
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:  "session",
-			Value: user.Email,
-			Path:  "/",
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:  "authenticated",
-			Value: "true",
-			Path:  "/",
-		})
+		sessions.Store(token, user.Email)
+		setSessionCookie(w, token)
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	template.Must(template.ParseFiles("templates/login.html")).Execute(w, nil)
+	renderTemplate(w, "login", nil)
 }
 
 func signup(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		var u data.User
-
 		r.ParseForm()
 
-		u.Name = r.Form.Get("name")
-		u.Email = r.Form.Get("email")
-		u.Password = r.Form.Get("password")
-
-		err := data.InsertOne("user", u)
+		hashed, err := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), bcrypt.DefaultCost)
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusUnauthorized)
+			http.Error(w, "failed to process password", http.StatusInternalServerError)
+			return
+		}
+
+		u := data.User{
+			Name:     r.Form.Get("name"),
+			Email:    r.Form.Get("email"),
+			Password: string(hashed),
+		}
+
+		if err := data.InsertOne("user", u); err != nil {
+			http.Error(w, "failed to create user", http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
 	}
 
-	template.Must(template.ParseFiles("templates/signup.html")).Execute(w, nil)
+	renderTemplate(w, "signup", nil)
 }
 
 func fleets(w http.ResponseWriter, r *http.Request) {
@@ -87,32 +120,33 @@ func fleets(w http.ResponseWriter, r *http.Request) {
 		f.UID = data.GenerateUID()
 		f.UserID = userID
 
-		err := data.InsertOne("fleet", f)
-		if err != nil {
-			log.Fatal(err)
+		if err := data.InsertOne("fleet", f); err != nil {
+			http.Error(w, "failed to create fleet", http.StatusInternalServerError)
+			return
 		}
 	}
 
-	var fleets []data.Fleet
-	err := data.FindAll("fleet", map[string]interface{}{"user_id": userID}, &fleets)
-	if err != nil {
-		log.Fatal(err)
+	var fleetList []data.Fleet
+	if err := data.FindAll("fleet", map[string]interface{}{"user_id": userID}, &fleetList); err != nil {
+		http.Error(w, "failed to fetch fleets", http.StatusInternalServerError)
+		return
 	}
 
-	template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")).Execute(w, fleets)
+	renderTemplate(w, "fleets", fleetList)
 }
 
 func devices(w http.ResponseWriter, r *http.Request) {
 	fleetID := chi.URLParam(r, "fleet_id")
 
 	if fleetID == "" {
-		http.RedirectHandler("/", 302).ServeHTTP(w, r)
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
 	}
 
 	var drones []data.Drone
 	err := data.FindAll("drone", map[string]interface{}{"fleet_id": fleetID}, &drones)
 	if err != nil {
-		http.RedirectHandler("/fleets", 302).ServeHTTP(w, r)
+		http.Redirect(w, r, "/fleets", http.StatusFound)
 		return
 	}
 
@@ -124,19 +158,22 @@ func devices(w http.ResponseWriter, r *http.Request) {
 		ID:     fleetID,
 	}
 
-	template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")).Execute(w, result)
+	renderTemplate(w, "drones", result)
 }
 
 func deviceDetails(w http.ResponseWriter, r *http.Request) {
 	droneID := chi.URLParam(r, "drone_id")
 
 	if droneID == "" {
-		http.RedirectHandler("/", 302).ServeHTTP(w, r)
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
 	}
 
 	if r.Method == "DELETE" {
-		r.ParseForm()
-		data.DeleteOne("drone", map[string]interface{}{"uid": droneID})
+		if err := data.DeleteOne("drone", map[string]interface{}{"uid": droneID}); err != nil {
+			http.Error(w, "failed to delete drone", http.StatusInternalServerError)
+			return
+		}
 		w.Write([]byte("deleted"))
 		return
 	}
@@ -144,13 +181,13 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 	var drone data.Drone
 	err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone)
 	if err != nil {
-		http.RedirectHandler("/fleets", 302).ServeHTTP(w, r)
+		http.Redirect(w, r, "/fleets", http.StatusFound)
 		return
 	}
 
 	drone.DeviceConfig.Server.URL = web.CleanServerURL(drone.DeviceConfig.Server.URL)
 
-	template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")).Execute(w, drone)
+	renderTemplate(w, "drone-details", drone)
 }
 
 // createDrone handles POST request to create a new drone with configuration
@@ -170,8 +207,6 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to parse form", http.StatusBadRequest)
 		return
 	}
-
-	fmt.Println(r.Form)
 
 	uuid := data.GenerateUID()
 	serverURL := getServerPath(r)
@@ -212,7 +247,6 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build complete config
 	deviceConfig := data.Config{
 		UUID:    uuid,
 		MAVLink: mavlinkConfig,
@@ -228,16 +262,13 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Apply defaults
 	deviceConfig.ApplyDefaults()
 
-	// Validate config
 	if err := deviceConfig.Validate(); err != nil {
-		http.Error(w, fmt.Sprintf("config validation failed: %v", err), http.StatusBadRequest)
+		http.Error(w, "config validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Create drone
 	drone := data.Drone{
 		UID:          uuid,
 		Name:         r.Form.Get("name"),
@@ -262,11 +293,9 @@ func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch drone from database
 	var drone data.Drone
 	err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone)
 	if err != nil {
-		// If drone not found, return default config
 		serverURL := getServerPath(r)
 		cfg := data.NewDefaultDeviceConfig(droneID, serverURL)
 		w.Header().Set("Content-Type", "application/json")
@@ -274,25 +303,18 @@ func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use device config from database
 	cfg := drone.DeviceConfig
 
-	// Ensure UUID is set
 	if cfg.UUID == "" {
 		cfg.UUID = droneID
 	}
 
-	// Update server URL to current request URL
 	serverURL := getServerPath(r)
 	cfg.Server.URL = serverURL
-
-	// Apply defaults for any missing fields
 	cfg.ApplyDefaults()
 
-	// Validate config
 	if err := cfg.Validate(); err != nil {
 		log.Printf("Config validation error for drone %s: %v", droneID, err)
-		// Still return the config, but log the error
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -302,28 +324,33 @@ func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
 func deviceStatus(w http.ResponseWriter, r *http.Request) {
 	droneID := chi.URLParam(r, "drone_id")
 	if droneID == "" {
-		http.RedirectHandler("/", 302).ServeHTTP(w, r)
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
 	}
 
 	if r.Method == "GET" {
 		var drone data.Drone
-		err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone)
-		if err != nil {
+		if err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone); err != nil {
 			log.Println("Error finding drone: ", err)
-			w.Write([]byte("error"))
+			http.Error(w, "error", http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(drone)
 		return
 	}
 
-	var deviceStatus data.ResourceStats
-	json.NewDecoder(r.Body).Decode(&deviceStatus)
+	r.Body = http.MaxBytesReader(w, r.Body, 1*1024*1024) // 1MB limit
+	var status data.ResourceStats
+	if err := json.NewDecoder(r.Body).Decode(&status); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
 
-	deviceStatus.LastUpdated = time.Now().Unix()
-	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": deviceStatus}); err != nil {
+	status.LastUpdated = time.Now().Unix()
+	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": status}); err != nil {
 		log.Println("Error updating drone status: ", err)
-		w.Write([]byte("error"))
+		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 
@@ -340,21 +367,22 @@ func getInstallCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify drone exists and belongs to fleet
+	if !validUID.MatchString(droneID) {
+		http.Error(w, "invalid drone_id", http.StatusBadRequest)
+		return
+	}
+
 	var drone data.Drone
-	err := data.FindOne("drone", map[string]interface{}{"uid": droneID, "fleet_id": fleetID}, &drone)
-	if err != nil {
+	if err := data.FindOne("drone", map[string]interface{}{"uid": droneID, "fleet_id": fleetID}, &drone); err != nil {
 		http.Error(w, "drone not found", http.StatusNotFound)
 		return
 	}
 
 	serverURL := getServerPath(r)
-	command := fmt.Sprintf("wget -O - %s/device/%s/installer.sh > install.sh && sudo sh install.sh", serverURL, droneID)
+	command := "wget -O - " + serverURL + "/device/" + droneID + "/installer.sh > install.sh && sudo sh install.sh"
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"command": command,
-	})
+	json.NewEncoder(w).Encode(map[string]string{"command": command})
 }
 
 // getInstallerScript returns the installer script for a specific drone
@@ -362,6 +390,11 @@ func getInstallerScript(w http.ResponseWriter, r *http.Request) {
 	droneID := chi.URLParam(r, "drone_id")
 	if droneID == "" {
 		http.Error(w, "missing drone_id", http.StatusBadRequest)
+		return
+	}
+
+	if !validUID.MatchString(droneID) {
+		http.Error(w, "invalid drone_id", http.StatusBadRequest)
 		return
 	}
 
@@ -373,24 +406,15 @@ func getInstallerScript(w http.ResponseWriter, r *http.Request) {
 }
 
 func getServerPath(r *http.Request) string {
-	// Determine the scheme (http or https)
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
 	} else if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
-		// Useful if behind a reverse proxy/load balancer
 		scheme = forwardedProto
 	}
-
-	// Get the host (domain or IP:port)
-	host := r.Host
-
-	// Build the base URL
-	baseURL := fmt.Sprintf("%s://%s", scheme, host)
-
-	return baseURL
+	return scheme + "://" + r.Host
 }
 
 func logViewer(w http.ResponseWriter, r *http.Request) {
-	template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")).Execute(w, nil)
+	renderTemplate(w, "log-viewer", nil)
 }

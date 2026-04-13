@@ -15,7 +15,10 @@ func main() {
 
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 
-	parser, _ := parsers.NewMavlinkParser(buf)
+	parser, err := parsers.NewMavlinkParser(buf)
+	if err != nil {
+		panic(err)
+	}
 	file, err := os.Open("messages_mav.txt")
 	if err != nil {
 		panic(err)

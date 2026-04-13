@@ -8,30 +8,26 @@ import (
 )
 
 func Request(url string, postdata string) ([]byte, int, error) {
-	var body []byte
 	resp, err := http.Post(url, "application/json", strings.NewReader(postdata))
 	if err != nil {
-		return body, 0, errors.New("Could not send request" + err.Error())
+		return nil, 0, errors.New("Could not send request: " + err.Error())
 	}
-
 	defer resp.Body.Close()
-	statusCode := resp.StatusCode
-	body, err = io.ReadAll(resp.Body)
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return body, statusCode, nil
+		return nil, resp.StatusCode, err
 	}
 
-	return body, statusCode, nil
+	return body, resp.StatusCode, nil
 }
 
-func WebRequest(method, url, postdata string) ([]byte, int, error) {
-
+func WebRequest(method, url, postdata string, headers map[string]string) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, strings.NewReader(postdata))
 	if err != nil {
 		return nil, 500, err
 	}
 
-	headers := map[string]string{}
 	for key, value := range headers {
 		req.Header.Add(key, value)
 	}
@@ -41,18 +37,16 @@ func WebRequest(method, url, postdata string) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	statusCode := resp.StatusCode
 
-	// read body
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return nil, statusCode, err
+		return nil, resp.StatusCode, err
 	}
-	return body, statusCode, nil
+	return body, resp.StatusCode, nil
 }
 
-// cleanServerURL removes http/https schema from server URL
+// CleanServerURL removes http/https/ws/wss schema from server URL
 func CleanServerURL(url string) string {
 	url = strings.TrimPrefix(url, "http://")
 	url = strings.TrimPrefix(url, "https://")

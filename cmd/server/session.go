@@ -1,33 +1,36 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"net/http"
+	"sync"
 )
 
-func SessionAuth(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+// sessions maps secure token -> userID (email)
+var sessions sync.Map
 
-		authenticated, err := r.Cookie("authenticated")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		sessionCookie, err := r.Cookie("session")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		if sessionCookie.Value == "" || authenticated.Value != "true" {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-
-		next.ServeHTTP(w, r)
+func generateSessionToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
 
-	return http.HandlerFunc(fn)
+func SessionAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session")
+		if err != nil || cookie.Value == "" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		if _, ok := sessions.Load(cookie.Value); !ok {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func GetUserIDFromSession(r *http.Request) string {
@@ -35,23 +38,33 @@ func GetUserIDFromSession(r *http.Request) string {
 	if err != nil {
 		return ""
 	}
+	userID, ok := sessions.Load(cookie.Value)
+	if !ok {
+		return ""
+	}
+	return userID.(string)
+}
 
-	return cookie.Value
+func setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   86400, // 24 hours
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-
+	cookie, err := r.Cookie("session")
+	if err == nil {
+		sessions.Delete(cookie.Value)
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:   "session",
 		Value:  "",
 		MaxAge: -1,
 	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:   "authenticated",
-		Value:  "",
-		MaxAge: -1,
-	})
-
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

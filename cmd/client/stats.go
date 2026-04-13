@@ -49,7 +49,7 @@ func sendStats(endpoint string) error {
 		return fmt.Errorf("failed to marshal stats: %w", err)
 	}
 
-	_, statusCode, err := web.WebRequest(http.MethodPost, endpoint, string(jsonData))
+	_, statusCode, err := web.WebRequest(http.MethodPost, endpoint, string(jsonData), nil)
 	if err != nil {
 		return fmt.Errorf("failed to send stats: %w", err)
 	}

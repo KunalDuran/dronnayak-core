@@ -12,15 +12,26 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 
 	mongoURI := os.Getenv("MONGO_URI")
 
 	data.InitDB(mongoURI)
+	initTemplates()
 
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
+	r.Use(securityHeaders)
 
 	fs := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fs))

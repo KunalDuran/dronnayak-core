@@ -2,8 +2,9 @@ package data
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"sync"
+	"time"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,106 +13,106 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var db *mongo.Client
+const (
+	dbName    = "dronnayak"
+	dbTimeout = 5 * time.Second
+)
+
+var (
+	db     *mongo.Client
+	dbOnce sync.Once
+)
 
 func InitDB(mongoURI string) {
+	dbOnce.Do(func() {
+		if mongoURI == "" {
+			mongoURI = "mongodb://localhost:27017"
+			log.Println("MONGO_URI not found, using default value")
+		}
 
-	var err error
-	if mongoURI == "" {
-		mongoURI = "mongodb://localhost:27017"
-		log.Default().Println("MONGO_URI not found, using default value")
-	}
+		clientOptions := options.Client().ApplyURI(mongoURI)
 
-	clientOptions := options.Client().ApplyURI(mongoURI)
-	c, err := mongo.Connect(context.TODO(), clientOptions)
-	if err != nil {
-		log.Fatal(err)
-	}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	err = c.Ping(context.TODO(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+		c, err := mongo.Connect(ctx, clientOptions)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	log.Println("Connected to MongoDB")
+		pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer pingCancel()
 
-	db = c
+		if err = c.Ping(pingCtx, nil); err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("Connected to MongoDB")
+		db = c
+	})
 }
 
 func GenerateUID() string {
-	id, _ := gonanoid.New(10)
+	id, err := gonanoid.New(10)
+	if err != nil {
+		log.Printf("Error generating UID: %v", err)
+		return ""
+	}
 	return id
-	// return uuid.New().String()
 }
 
 func GetCollection(name string) *mongo.Collection {
-	return db.Database("dronnayak").Collection(name)
+	return db.Database(dbName).Collection(name)
 }
 
 func InsertOne(collection string, document interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-	_, err := c.InsertOne(context.Background(), document)
+	_, err := c.InsertOne(ctx, document)
 	return err
 }
 
 func Insert(collection string, document []interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-	_, err := c.InsertMany(context.Background(), document)
+	_, err := c.InsertMany(ctx, document)
 	return err
 }
 
 func FindOne(collection string, filter map[string]interface{}, result interface{}) error {
-	var f = make(bson.M)
-	for k, v := range filter {
-		f[k] = v
-	}
-
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-	err := c.FindOne(context.Background(), f).Decode(result)
-	return err
+	return c.FindOne(ctx, bson.M(filter)).Decode(result)
 }
 
 func FindAll(collection string, filter map[string]interface{}, results interface{}, opts ...*options.FindOptions) error {
-	var f = make(bson.M)
-	for k, v := range filter {
-		f[k] = v
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-	cursor, err := c.Find(context.Background(), f)
+	cursor, err := c.Find(ctx, bson.M(filter), opts...)
 	if err != nil {
 		return err
 	}
-	defer cursor.Close(context.Background())
-
-	return cursor.All(context.Background(), results)
+	defer cursor.Close(ctx)
+	return cursor.All(ctx, results)
 }
 
 func UpdateOne(collection string, filter map[string]interface{}, update map[string]interface{}, opts ...*options.UpdateOptions) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-
-	flt := make(bson.M)
-	for k, v := range filter {
-		flt[k] = v
-	}
-
-	upd := bson.M{
-		"$set": update,
-	}
-
-	r, err := c.UpdateOne(context.Background(), flt, upd, options.Update().SetUpsert(true))
-	fmt.Println(r)
+	_, err := c.UpdateOne(ctx, bson.M(filter), bson.M{"$set": update}, options.Update().SetUpsert(true))
 	return err
 }
 
 func DeleteOne(collection string, filter map[string]interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
 	c := GetCollection(collection)
-	
-	flt := make(bson.M)
-	for k, v := range filter {
-		flt[k] = v
-	}
-	
-	_, err := c.DeleteOne(context.Background(), flt)
+	_, err := c.DeleteOne(ctx, bson.M(filter))
 	return err
 }
 
