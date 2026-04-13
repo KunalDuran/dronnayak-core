@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"log/slog"
 	"net/http"
 	"sync"
 )
@@ -22,10 +23,12 @@ func SessionAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err != nil || cookie.Value == "" {
+			slog.Debug("unauthenticated request: missing session cookie", "path", r.URL.Path)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 		if _, ok := sessions.Load(cookie.Value); !ok {
+			slog.Warn("unauthenticated request: invalid session token", "path", r.URL.Path)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
@@ -59,7 +62,9 @@ func setSessionCookie(w http.ResponseWriter, token string) {
 func logout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session")
 	if err == nil {
-		sessions.Delete(cookie.Value)
+		if userID, ok := sessions.LoadAndDelete(cookie.Value); ok {
+			slog.Info("user logged out", "email", userID)
+		}
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:   "session",

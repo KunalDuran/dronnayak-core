@@ -2,7 +2,9 @@ package data
 
 import (
 	"context"
-	"log"
+	"log/slog"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,11 +25,21 @@ var (
 	dbOnce sync.Once
 )
 
+// maskedURI strips credentials from a MongoDB URI for safe logging.
+func maskedURI(uri string) string {
+	if i := strings.Index(uri, "@"); i >= 0 {
+		if j := strings.Index(uri, "://"); j >= 0 {
+			return uri[:j+3] + "***@" + uri[i+1:]
+		}
+	}
+	return uri
+}
+
 func InitDB(mongoURI string) {
 	dbOnce.Do(func() {
 		if mongoURI == "" {
 			mongoURI = "mongodb://localhost:27017"
-			log.Println("MONGO_URI not found, using default value")
+			slog.Warn("MONGO_URI not set, using default", "uri", mongoURI)
 		}
 
 		clientOptions := options.Client().ApplyURI(mongoURI)
@@ -37,17 +49,19 @@ func InitDB(mongoURI string) {
 
 		c, err := mongo.Connect(ctx, clientOptions)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("failed to connect to MongoDB", "uri", maskedURI(mongoURI), "error", err)
+			os.Exit(1)
 		}
 
 		pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer pingCancel()
 
 		if err = c.Ping(pingCtx, nil); err != nil {
-			log.Fatal(err)
+			slog.Error("MongoDB ping failed", "uri", maskedURI(mongoURI), "error", err)
+			os.Exit(1)
 		}
 
-		log.Println("Connected to MongoDB")
+		slog.Info("connected to MongoDB", "uri", maskedURI(mongoURI), "db", dbName)
 		db = c
 	})
 }
@@ -55,7 +69,7 @@ func InitDB(mongoURI string) {
 func GenerateUID() string {
 	id, err := gonanoid.New(10)
 	if err != nil {
-		log.Printf("Error generating UID: %v", err)
+		slog.Error("failed to generate UID", "error", err)
 		return ""
 	}
 	return id
@@ -68,31 +82,31 @@ func GetCollection(name string) *mongo.Collection {
 func InsertOne(collection string, document interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	_, err := c.InsertOne(ctx, document)
+	slog.Debug("db insert", "collection", collection)
+	_, err := GetCollection(collection).InsertOne(ctx, document)
 	return err
 }
 
 func Insert(collection string, document []interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	_, err := c.InsertMany(ctx, document)
+	slog.Debug("db insert many", "collection", collection, "count", len(document))
+	_, err := GetCollection(collection).InsertMany(ctx, document)
 	return err
 }
 
 func FindOne(collection string, filter map[string]interface{}, result interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	return c.FindOne(ctx, bson.M(filter)).Decode(result)
+	slog.Debug("db find one", "collection", collection)
+	return GetCollection(collection).FindOne(ctx, bson.M(filter)).Decode(result)
 }
 
 func FindAll(collection string, filter map[string]interface{}, results interface{}, opts ...*options.FindOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	cursor, err := c.Find(ctx, bson.M(filter), opts...)
+	slog.Debug("db find all", "collection", collection)
+	cursor, err := GetCollection(collection).Find(ctx, bson.M(filter), opts...)
 	if err != nil {
 		return err
 	}
@@ -103,23 +117,23 @@ func FindAll(collection string, filter map[string]interface{}, results interface
 func UpdateOne(collection string, filter map[string]interface{}, update map[string]interface{}, opts ...*options.UpdateOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	_, err := c.UpdateOne(ctx, bson.M(filter), bson.M{"$set": update}, options.Update().SetUpsert(true))
+	slog.Debug("db update one", "collection", collection)
+	_, err := GetCollection(collection).UpdateOne(ctx, bson.M(filter), bson.M{"$set": update}, options.Update().SetUpsert(true))
 	return err
 }
 
 func DeleteOne(collection string, filter map[string]interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	c := GetCollection(collection)
-	_, err := c.DeleteOne(ctx, bson.M(filter))
+	slog.Debug("db delete one", "collection", collection)
+	_, err := GetCollection(collection).DeleteOne(ctx, bson.M(filter))
 	return err
 }
 
 func TryStringToObjectID(id string) primitive.ObjectID {
 	o, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		log.Println("Error converting string to ObjectID: ", err)
+		slog.Warn("failed to convert string to ObjectID", "id", id, "error", err)
 		return primitive.ObjectID{}
 	}
 	return o

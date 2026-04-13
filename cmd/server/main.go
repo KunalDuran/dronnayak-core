@@ -1,9 +1,11 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/KunalDuran/gowsrelay/server"
 
@@ -11,6 +13,55 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+func initLogger() {
+	level := parseLogLevel(os.Getenv("LOG_LEVEL"))
+	opts := &slog.HandlerOptions{
+		Level:     level,
+		AddSource: level == slog.LevelDebug, // include file/line only in debug mode
+	}
+
+	var handler slog.Handler
+	if os.Getenv("LOG_FORMAT") == "text" {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	slog.SetDefault(slog.New(handler))
+}
+
+func parseLogLevel(s string) slog.Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+// requestLogger is a structured slog-based replacement for middleware.Logger.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+		next.ServeHTTP(ww, r)
+
+		slog.Info("request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", ww.Status(),
+			"bytes", ww.BytesWritten(),
+			"duration_ms", time.Since(start).Milliseconds(),
+			"remote_addr", r.RemoteAddr,
+		)
+	})
+}
 
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -22,20 +73,19 @@ func securityHeaders(next http.Handler) http.Handler {
 }
 
 func main() {
+	initLogger()
 
 	mongoURI := os.Getenv("MONGO_URI")
-
 	data.InitDB(mongoURI)
 	initTemplates()
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
+	r.Use(requestLogger)
 	r.Use(securityHeaders)
 
 	fs := http.FileServer(http.Dir("./static"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fs))
-
 	r.Handle("/bin/*", http.StripPrefix("/bin/", http.FileServer(http.Dir("./bin"))))
 
 	r.Get("/login", login)
@@ -67,9 +117,12 @@ func main() {
 		rauth.Get("/device/{drone_id}/logs", logViewer)
 	})
 
-	// Public routes for device installation
 	r.Get("/device/{drone_id}/installer.sh", getInstallerScript)
 
-	log.Println("Server started on port 8090")
-	log.Fatal(http.ListenAndServe("0.0.0.0:8090", r))
+	addr := "0.0.0.0:8090"
+	slog.Info("server starting", "addr", addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
+		slog.Error("server stopped", "error", err)
+		os.Exit(1)
+	}
 }

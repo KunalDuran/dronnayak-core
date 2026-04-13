@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"html/template"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -40,7 +40,7 @@ func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 		return
 	}
 	if err := t.Execute(w, data); err != nil {
-		log.Printf("template %s execution error: %v", name, err)
+		slog.Error("template execution error", "template", name, "error", err)
 	}
 }
 
@@ -58,23 +58,27 @@ func login(w http.ResponseWriter, r *http.Request) {
 		var user data.User
 		err := data.FindOne("user", map[string]interface{}{"email": email}, &user)
 		if err != nil || user.Email == "" {
+			slog.Warn("login failed: user not found", "email", email)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+			slog.Warn("login failed: wrong password", "email", email)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
 		token, err := generateSessionToken()
 		if err != nil {
+			slog.Error("failed to generate session token", "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		sessions.Store(token, user.Email)
 		setSessionCookie(w, token)
 
+		slog.Info("user logged in", "email", user.Email)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -99,9 +103,11 @@ func signup(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := data.InsertOne("user", u); err != nil {
+			slog.Error("failed to create user", "email", u.Email, "error", err)
 			http.Error(w, "failed to create user", http.StatusInternalServerError)
 			return
 		}
+		slog.Info("user registered", "email", u.Email)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
@@ -121,13 +127,16 @@ func fleets(w http.ResponseWriter, r *http.Request) {
 		f.UserID = userID
 
 		if err := data.InsertOne("fleet", f); err != nil {
+			slog.Error("failed to create fleet", "user_id", userID, "error", err)
 			http.Error(w, "failed to create fleet", http.StatusInternalServerError)
 			return
 		}
+		slog.Info("fleet created", "fleet_uid", f.UID, "user_id", userID)
 	}
 
 	var fleetList []data.Fleet
 	if err := data.FindAll("fleet", map[string]interface{}{"user_id": userID}, &fleetList); err != nil {
+		slog.Error("failed to fetch fleets", "user_id", userID, "error", err)
 		http.Error(w, "failed to fetch fleets", http.StatusInternalServerError)
 		return
 	}
@@ -171,9 +180,11 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "DELETE" {
 		if err := data.DeleteOne("drone", map[string]interface{}{"uid": droneID}); err != nil {
+			slog.Error("failed to delete drone", "drone_id", droneID, "error", err)
 			http.Error(w, "failed to delete drone", http.StatusInternalServerError)
 			return
 		}
+		slog.Info("drone deleted", "drone_id", droneID)
 		w.Write([]byte("deleted"))
 		return
 	}
@@ -278,10 +289,11 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := data.InsertOne("drone", drone); err != nil {
-		log.Printf("Error creating drone: %v", err)
+		slog.Error("failed to create drone", "fleet_id", fleetID, "error", err)
 		http.Error(w, "failed to create drone", http.StatusInternalServerError)
 		return
 	}
+	slog.Info("drone created", "drone_id", drone.UID, "fleet_id", fleetID)
 
 	http.Redirect(w, r, "/fleets/"+fleetID, http.StatusSeeOther)
 }
@@ -314,7 +326,7 @@ func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
 	cfg.ApplyDefaults()
 
 	if err := cfg.Validate(); err != nil {
-		log.Printf("Config validation error for drone %s: %v", droneID, err)
+		slog.Warn("drone config validation error", "drone_id", droneID, "error", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -331,7 +343,7 @@ func deviceStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var drone data.Drone
 		if err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone); err != nil {
-			log.Println("Error finding drone: ", err)
+			slog.Error("failed to find drone", "drone_id", droneID, "error", err)
 			http.Error(w, "error", http.StatusInternalServerError)
 			return
 		}
@@ -349,7 +361,7 @@ func deviceStatus(w http.ResponseWriter, r *http.Request) {
 
 	status.LastUpdated = time.Now().Unix()
 	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": status}); err != nil {
-		log.Println("Error updating drone status: ", err)
+		slog.Error("failed to update drone status", "drone_id", droneID, "error", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
