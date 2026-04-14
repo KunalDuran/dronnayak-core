@@ -3,21 +3,26 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
+	"log/slog"
+	"os"
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	configPath := flag.String("config", "config.json", "Path to configuration file")
 	flag.Parse()
 
 	app, err := NewDronnayak(*configPath)
 	if err != nil {
-		log.Fatalf("Failed to initialize: %v", err)
+		slog.Error("failed to initialize", "error", err)
+		os.Exit(1)
 	}
 
 	if err := app.Run(context.Background()); err != nil {
-		log.Fatalf("Application error: %v", err)
+		slog.Error("application error", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Shutdown complete")
+	slog.Info("shutdown complete")
 }

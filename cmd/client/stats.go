@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -15,8 +15,7 @@ import (
 func (d *Dronnayak) startStatsReporter(ctx context.Context) {
 	endpoint := d.config.Server.URL + d.config.Stats.Endpoint
 
-	log.Printf("Stats reporting enabled: interval=%s, endpoint=%s",
-		d.config.Stats.Interval, endpoint)
+	slog.Info("stats reporting enabled", "interval", d.config.Stats.Interval, "endpoint", endpoint)
 
 	// Initial stats collection (warm-up)
 	devstat.Stats()
@@ -28,11 +27,11 @@ func (d *Dronnayak) startStatsReporter(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			if err := sendStats(endpoint); err != nil {
-				log.Printf("Stats reporting error: %v", err)
+				slog.Error("stats reporting error", "error", err)
 			}
 
 		case <-ctx.Done():
-			log.Println("Stats reporter shutting down")
+			slog.Info("stats reporter shutting down")
 			return
 		}
 	}

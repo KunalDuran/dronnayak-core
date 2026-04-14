@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/KunalDuran/gowsrelay/client"
@@ -37,14 +37,14 @@ func NewTunnelManager(serverHost, port, wsPath, tunnelID string) *TunnelManager 
 
 // Start begins the tunnel connection with automatic reconnection
 func (tm *TunnelManager) Start(ctx context.Context) {
-	log.Printf("Starting tunnel for port %s (ID: %s)", tm.port, tm.tunnelID)
+	slog.Info("starting tunnel", "port", tm.port, "id", tm.tunnelID)
 
 	retryCount := 0
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Tunnel for port %s (ID: %s) shutting down", tm.port, tm.tunnelID)
+			slog.Info("tunnel shutting down", "port", tm.port, "id", tm.tunnelID)
 			return
 		default:
 			tunConfig := client.TunnelConfig{
@@ -60,24 +60,26 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 				retryCount++
 				delay := tm.calculateBackoff(retryCount)
 
-				log.Printf("Tunnel error for port %s (ID: %s): %v - reconnecting in %v (attempt %d)",
-					tm.port, tm.tunnelID, err, delay, retryCount)
+				slog.Warn("tunnel error, reconnecting",
+					"port", tm.port,
+					"id", tm.tunnelID,
+					"error", err,
+					"delay", delay,
+					"attempt", retryCount)
 
 				// Wait before reconnecting, but respect context cancellation
 				select {
 				case <-time.After(delay):
 					continue
 				case <-ctx.Done():
-					log.Printf("Tunnel for port %s (ID: %s) shutting down during reconnect wait",
-						tm.port, tm.tunnelID)
+					slog.Info("tunnel shutting down during reconnect wait", "port", tm.port, "id", tm.tunnelID)
 					return
 				}
 			}
 
 			// If connection closed gracefully (no error), reset retry count
 			retryCount = 0
-			log.Printf("Tunnel for port %s (ID: %s) closed gracefully, reconnecting...",
-				tm.port, tm.tunnelID)
+			slog.Info("tunnel closed gracefully, reconnecting", "port", tm.port, "id", tm.tunnelID)
 
 			// Brief pause before reconnecting on graceful close
 			select {

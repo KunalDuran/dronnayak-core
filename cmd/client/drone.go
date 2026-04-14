@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"runtime"
@@ -73,14 +73,14 @@ func (d *Dronnayak) Run(ctx context.Context) error {
 
 	// Wait for shutdown signal
 	sig := <-sigChan
-	log.Printf("Received signal: %v, shutting down gracefully...", sig)
+	slog.Info("received shutdown signal, shutting down gracefully", "signal", sig)
 
 	// Cancel context to signal all goroutines to stop
 	cancel()
 
 	// Wait for all goroutines to finish
 	d.wg.Wait()
-	log.Println("All services stopped")
+	slog.Info("all services stopped")
 
 	return nil
 }
@@ -106,7 +106,7 @@ func (d *Dronnayak) initMAVLink() error {
 
 	if d.config.MAVLink.StreamFrequency > 0 {
 		nodeConf.StreamRequestFrequency = d.config.MAVLink.StreamFrequency
-		log.Printf("Stream frequency: %d Hz", d.config.MAVLink.StreamFrequency)
+		slog.Info("stream frequency configured", "hz", d.config.MAVLink.StreamFrequency)
 	}
 
 	node, err := gomavlib.NewNode(nodeConf)
@@ -115,14 +115,14 @@ func (d *Dronnayak) initMAVLink() error {
 	}
 
 	d.mavNode = node
-	log.Printf("MAVLink initialized on %s (baud: %d)", serialPort, d.config.MAVLink.BaudRate)
+	slog.Info("MAVLink initialized", "port", serialPort, "baud", d.config.MAVLink.BaudRate)
 	return nil
 }
 
 // detectSerialPort detects the appropriate serial port based on OS
 func (d *Dronnayak) detectSerialPort() string {
 	if d.config.MAVLink.SerialPort != "" {
-		log.Printf("Using configured serial port: %s", d.config.MAVLink.SerialPort)
+		slog.Info("using configured serial port", "port", d.config.MAVLink.SerialPort)
 		return d.config.MAVLink.SerialPort
 	}
 
@@ -138,38 +138,40 @@ func (d *Dronnayak) detectSerialPort() string {
 		defaultPort = "/dev/ttyACM0"
 	}
 
-	log.Printf("Using auto-detected serial port: %s", defaultPort)
+	slog.Info("using auto-detected serial port", "port", defaultPort, "os", runtime.GOOS)
 	return defaultPort
 }
 
 // processMAVLinkEvents handles all MAVLink events
 func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
-	log.Println("MAVLink event processor started")
-	defer log.Println("MAVLink event processor stopped")
+	slog.Info("MAVLink event processor started")
+	defer slog.Info("MAVLink event processor stopped")
 
 	for {
 		select {
 		case evt := <-d.mavNode.Events():
 			switch e := evt.(type) {
 			case *gomavlib.EventChannelOpen:
-				log.Printf("Channel opened: %s", e.Channel)
+				slog.Info("channel opened", "channel", e.Channel)
 
 			case *gomavlib.EventStreamRequested:
-				log.Printf("Stream requested: chan=%s sid=%d cid=%d",
-					e.Channel, e.SystemID, e.ComponentID)
+				slog.Info("stream requested",
+					"channel", e.Channel,
+					"system_id", e.SystemID,
+					"component_id", e.ComponentID)
 
 			case *gomavlib.EventParseError:
 				if strings.Contains(e.Error.Error(), "invalid magic byte") {
 					continue // ignore noise
 				}
-				log.Printf("Parse error: %s", e.Error)
+				slog.Warn("parse error", "error", e.Error)
 
 			case *gomavlib.EventFrame:
 				// Forward frame to other endpoints (Pixhawk <-> Mission Planner)
 				d.mavNode.WriteFrameExcept(e.Channel, e.Frame)
 
 			case *gomavlib.EventChannelClose:
-				log.Printf("Channel closed: %v", e.Channel)
+				slog.Info("channel closed", "channel", e.Channel)
 			}
 
 		case <-ctx.Done():
@@ -181,7 +183,7 @@ func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
 // startTunnels starts WebSocket tunnels for configured ports with reconnection
 func (d *Dronnayak) startTunnels(ctx context.Context) {
 	if len(d.config.Tunnel.Ports) == 0 {
-		log.Println("No tunnel ports configured")
+		slog.Warn("no tunnel ports configured")
 		return
 	}
 
@@ -204,7 +206,7 @@ func (d *Dronnayak) startTunnels(ctx context.Context) {
 		}(tm)
 	}
 
-	log.Printf("Started %d tunnel(s) with auto-reconnection", len(d.config.Tunnel.Ports))
+	slog.Info("tunnels started", "count", len(d.config.Tunnel.Ports), "auto_reconnect", true)
 }
 
 // cleanServerURL removes http/https schema from server URL
@@ -217,7 +219,7 @@ func (d *Dronnayak) cleanServerURL(url string) string {
 // Close gracefully shuts down the MAVLink node
 func (d *Dronnayak) Close() {
 	if d.mavNode != nil {
-		log.Println("Closing MAVLink node...")
+		slog.Info("closing MAVLink node")
 		d.mavNode.Close()
 	}
 }
