@@ -196,7 +196,7 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	drone.DeviceConfig.Server.URL = web.CleanServerURL(drone.DeviceConfig.Server.URL)
+	drone.DeviceConfig.Server.URL = web.CleanServerURL(getServerPath(r))
 
 	view := struct {
 		data.Drone
