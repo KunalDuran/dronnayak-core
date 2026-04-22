@@ -79,6 +79,8 @@ func main() {
 	data.InitDB(mongoURI)
 	initTemplates()
 
+	server.Configure(server.Config{})
+
 	r := chi.NewRouter()
 
 	r.Use(requestLogger)
@@ -96,6 +98,7 @@ func main() {
 	r.Get("/device/{drone_id}/config.json", DeviceConfigHandler)
 	r.Post("/device-status/{drone_id}", deviceStatus)
 	r.Get("/device-status/{drone_id}", deviceStatus)
+	r.Put("/device/{drone_id}/config", updateDeviceConfig)
 
 	r.HandleFunc("/ws", server.HandleWebSocket)
 	r.HandleFunc("/tcp", server.HandleTCPProxy)

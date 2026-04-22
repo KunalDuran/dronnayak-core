@@ -26,9 +26,15 @@ type Dronnayak struct {
 
 // NewDronnayak creates a new Dronnayak instance
 func NewDronnayak(configPath string) (*Dronnayak, error) {
-	config, err := data.LoadConfig(configPath)
+	bootstrap, err := data.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	config, err := data.LoadConfigV2(bootstrap.Server.URL, bootstrap.UUID)
+	if err != nil {
+		slog.Warn("failed to fetch config from server, falling back to local config", "error", err)
+		config = bootstrap
 	}
 
 	return &Dronnayak{

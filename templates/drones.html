@@ -423,7 +423,7 @@
 
   // Show config
   function showConfig(droneUID) {
-    fetch(`/device/${droneUID}/config.json`)
+    fetch(`/device/${droneUID}/config.json?raw=true`)
       .then(response => response.json())
       .then(data => {
         document.getElementById('configContent').textContent = JSON.stringify(data, null, 2);

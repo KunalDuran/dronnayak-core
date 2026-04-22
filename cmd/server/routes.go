@@ -23,13 +23,13 @@ var (
 
 func initTemplates() {
 	tmpl = map[string]*template.Template{
-		"index":        template.Must(template.ParseFiles("templates/base.html", "templates/index.html")),
-		"login":        template.Must(template.ParseFiles("templates/login.html")),
-		"signup":       template.Must(template.ParseFiles("templates/signup.html")),
-		"fleets":       template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
-		"drones":       template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
+		"index":         template.Must(template.ParseFiles("templates/base.html", "templates/index.html")),
+		"login":         template.Must(template.ParseFiles("templates/login.html")),
+		"signup":        template.Must(template.ParseFiles("templates/signup.html")),
+		"fleets":        template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
+		"drones":        template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
 		"drone-details": template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
-		"log-viewer":   template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")),
+		"log-viewer":    template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")),
 	}
 }
 
@@ -198,7 +198,15 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 
 	drone.DeviceConfig.Server.URL = web.CleanServerURL(drone.DeviceConfig.Server.URL)
 
-	renderTemplate(w, "drone-details", drone)
+	view := struct {
+		data.Drone
+		StatsIntervalSec int64
+	}{
+		Drone:            drone,
+		StatsIntervalSec: int64(drone.DeviceConfig.Stats.Interval / time.Second),
+	}
+
+	renderTemplate(w, "drone-details", view)
 }
 
 // createDrone handles POST request to create a new drone with configuration
@@ -305,30 +313,64 @@ func DeviceConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rawConfig := r.URL.Query().Has("raw")
+
 	var drone data.Drone
 	err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone)
 	if err != nil {
-		serverURL := getServerPath(r)
-		cfg := data.NewDefaultDeviceConfig(droneID, serverURL)
+		cfg := data.NewDefaultDeviceConfig(droneID, getServerPath(r))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(cfg)
 		return
 	}
 
 	cfg := drone.DeviceConfig
-
 	if cfg.UUID == "" {
 		cfg.UUID = droneID
 	}
 
-	serverURL := getServerPath(r)
-	cfg.Server.URL = serverURL
-	cfg.ApplyDefaults()
+	if !rawConfig {
+		cfg.Server.URL = getServerPath(r)
+		cfg.ApplyDefaults()
+	}
 
 	if err := cfg.Validate(); err != nil {
 		slog.Warn("drone config validation error", "drone_id", droneID, "error", err)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cfg)
+}
+
+func updateDeviceConfig(w http.ResponseWriter, r *http.Request) {
+	droneID := chi.URLParam(r, "drone_id")
+	if droneID == "" {
+		http.Error(w, "missing drone_id", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1*1024*1024)
+	var cfg data.Config
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	cfg.UUID = droneID
+	cfg.ApplyDefaults()
+
+	if err := cfg.Validate(); err != nil {
+		http.Error(w, "config validation failed: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"device_config": cfg}); err != nil {
+		slog.Error("failed to update drone config", "drone_id", droneID, "error", err)
+		http.Error(w, "error", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("drone config updated", "drone_id", droneID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cfg)
 }

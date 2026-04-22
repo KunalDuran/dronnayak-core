@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 )
@@ -46,6 +47,35 @@ type StatsConfig struct {
 	Enabled  bool          `json:"enabled" bson:"enabled"`   // Default: true
 	Interval time.Duration `json:"interval" bson:"interval"` // Default: 5s
 	Endpoint string        `json:"endpoint" bson:"endpoint"` // Default: /device-status/{uuid}
+}
+
+// LoadConfigV2 fetches the device config from the server API.
+// serverURL is the base server URL (e.g. "http://localhost:8090"), uuid is the device ID.
+func LoadConfigV2(serverURL, uuid string) (*Config, error) {
+	url := fmt.Sprintf("%s/device/%s/config.json?raw=true", serverURL, uuid)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch config from server: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status %d for config", resp.StatusCode)
+	}
+
+	var config Config
+	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode config response: %w", err)
+	}
+
+	config.ApplyDefaults()
+
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
+	return &config, nil
 }
 
 func LoadConfig(configPath string) (*Config, error) {

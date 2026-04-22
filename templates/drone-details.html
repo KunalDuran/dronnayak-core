@@ -1,4 +1,4 @@
-{{ define "content" }}
+﻿{{ define "content" }}
 <div class="container-fluid mt-4 mb-5 px-4">
   <!-- Header Section -->
   <div class="mb-4">
@@ -17,6 +17,11 @@
           <span class="text-muted">{{ .UID }}</span>
         </div>
       </div>
+      <button class="btn btn-outline-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#editConfigModal">
+        <i class="bi bi-pencil-square me-1"></i>Edit Config
+      </button>
     </div>
   </div>
 
@@ -562,5 +567,185 @@
             socket.close();
         }
     });
+</script>
+<!-- Edit Config Modal -->
+<div class="modal fade" id="editConfigModal" tabindex="-1" aria-labelledby="editConfigModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h4 class="modal-title fw-bold mb-1" id="editConfigModalLabel">Edit Configuration</h4>
+          <p class="text-muted small mb-0">Update device settings</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3" style="max-height: calc(100vh - 250px); overflow-y: auto;">
+
+        <!-- MAVLink Config Section -->
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-success bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-hdd-network text-success"></i>
+            </div>
+            <h6 class="fw-semibold mb-0">MAVLink Configuration</h6>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Serial Port</label>
+            <input type="text" class="form-control" id="cfg-serial-port" placeholder="/dev/serial0" value="{{ .DeviceConfig.MAVLink.SerialPort }}">
+            <small class="form-text text-muted">The serial port for MAVLink communication</small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">TCP Address</label>
+            <input type="text" class="form-control" id="cfg-tcp-address" value="{{ .DeviceConfig.MAVLink.TCPAddress }}">
+            <small class="form-text text-muted">TCP address and port for MAVLink</small>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Baud Rate</label>
+              <input type="number" class="form-control" id="cfg-baud-rate" value="{{ .DeviceConfig.MAVLink.BaudRate }}" min="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Stream Frequency (Hz)</label>
+              <input type="number" class="form-control" id="cfg-stream-freq" value="{{ .DeviceConfig.MAVLink.StreamFrequency }}" min="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tunnel Config Section -->
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-arrow-left-right text-warning"></i>
+            </div>
+            <h6 class="fw-semibold mb-0">Tunnel Configuration</h6>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tunnel Ports</label>
+            <div id="editTunnelPortsContainer">
+              {{ range .DeviceConfig.Tunnel.Ports }}
+              <div class="input-group mb-2">
+                <input type="text" class="form-control edit-tunnel-port" value="{{ . }}" placeholder="Port number">
+                <button type="button" class="btn btn-outline-danger" onclick="removeEditPort(this)">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              {{ end }}
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEditPort()">
+              <i class="bi bi-plus-circle me-1"></i>Add Port
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Config Section -->
+        <div class="mb-4">
+          <div class="d-flex align-items-center mb-3">
+            <div class="rounded-circle bg-info bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-graph-up text-info"></i>
+            </div>
+            <h6 class="fw-semibold mb-0">Stats Configuration</h6>
+          </div>
+          <div class="mb-3 form-check form-switch">
+            <input type="checkbox" class="form-check-input" id="cfg-stats-enabled" {{ if .DeviceConfig.Stats.Enabled }}checked{{ end }}>
+            <label class="form-check-label" for="cfg-stats-enabled">Enable Statistics Collection</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Stats Interval (seconds)</label>
+            <input type="number" class="form-control" id="cfg-stats-interval" value="{{ .StatsIntervalSec }}" min="1">
+            <small class="form-text text-muted">How often to collect statistics</small>
+          </div>
+        </div>
+
+        <div id="editConfigAlert" class="alert d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="saveConfig()">
+          <i class="bi bi-floppy me-1"></i>Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const droneUID = '{{ .UID }}';
+
+  function addEditPort() {
+    const container = document.getElementById('editTunnelPortsContainer');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+      <input type="text" class="form-control edit-tunnel-port" value="" placeholder="Port number">
+      <button type="button" class="btn btn-outline-danger" onclick="removeEditPort(this)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    `;
+    container.appendChild(div);
+  }
+
+  function removeEditPort(btn) {
+    const container = document.getElementById('editTunnelPortsContainer');
+    if (container.children.length > 1) {
+      btn.parentElement.remove();
+    } else {
+      alert('At least one port is required');
+    }
+  }
+
+  function saveConfig() {
+    const ports = [...document.querySelectorAll('.edit-tunnel-port')]
+      .map(i => i.value.trim())
+      .filter(v => v !== '');
+
+    if (ports.length === 0) {
+      showConfigAlert('At least one tunnel port is required.', 'danger');
+      return;
+    }
+
+    const intervalSec = parseInt(document.getElementById('cfg-stats-interval').value, 10);
+    if (isNaN(intervalSec) || intervalSec < 1) {
+      showConfigAlert('Stats interval must be at least 1 second.', 'danger');
+      return;
+    }
+
+    const cfg = {
+      uuid: droneUID,
+      mavlink: {
+        serial_port:      document.getElementById('cfg-serial-port').value.trim(),
+        tcp_address:      document.getElementById('cfg-tcp-address').value.trim(),
+        baud_rate:        parseInt(document.getElementById('cfg-baud-rate').value, 10) || 0,
+        stream_frequency: parseInt(document.getElementById('cfg-stream-freq').value, 10) || 0,
+        out_system_id:    255,
+      },
+      server: { url: '' },
+      tunnel: { ports },
+      stats: {
+        enabled:  document.getElementById('cfg-stats-enabled').checked,
+        interval: intervalSec * 1e9,
+      },
+    };
+
+    fetch(`/device/${droneUID}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg),
+    })
+      .then(r => {
+        if (!r.ok) return r.text().then(t => Promise.reject(t));
+        return r.json();
+      })
+      .then(() => {
+        showConfigAlert('Configuration saved successfully.', 'success');
+        setTimeout(() => location.reload(), 1200);
+      })
+      .catch(err => showConfigAlert('Failed to save: ' + err, 'danger'));
+  }
+
+  function showConfigAlert(msg, type) {
+    const el = document.getElementById('editConfigAlert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+  }
 </script>
 {{ end }}
