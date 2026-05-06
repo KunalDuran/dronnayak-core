@@ -6,6 +6,8 @@ github.com/KunalDuran/gowsrelay v0.0.1 h1:wLDm3eSWF3vEKMjFjV/IbkzBlpQ/yYKgBQPq/3
 github.com/KunalDuran/gowsrelay v0.0.1/go.mod h1:7SryKvXc9hyZTH5jNIdRavBAV9uAbNVng/XOZiZATjg=
 github.com/KunalDuran/gowsrelay v0.0.2-0.20260505183358-47c26c410541 h1:hDj+CK5JsTVQ0PSYt92lhthFIvj6Vg6It5fmgF+Gykw=
 github.com/KunalDuran/gowsrelay v0.0.2-0.20260505183358-47c26c410541/go.mod h1:7SryKvXc9hyZTH5jNIdRavBAV9uAbNVng/XOZiZATjg=
+github.com/KunalDuran/gowsrelay v0.0.2-0.20260506185524-b5d9bed7ed6f h1:7Y3VnJXwehCIaW9jFVeFHmkOl6raodtuC/9ydhknukw=
+github.com/KunalDuran/gowsrelay v0.0.2-0.20260506185524-b5d9bed7ed6f/go.mod h1:7SryKvXc9hyZTH5jNIdRavBAV9uAbNVng/XOZiZATjg=
 github.com/bluenviron/gomavlib/v3 v3.0.0 h1:3kqgXOJ4WTCM6kwx2iDxnAJGSvNcZXT0QYxyaRYQFCY=
 github.com/bluenviron/gomavlib/v3 v3.0.0/go.mod h1:TZxIjsog6s8Jce3/nycUOxEGaOFAg/PuqOYmdNasYIA=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

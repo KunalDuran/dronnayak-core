@@ -50,13 +50,16 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 			tunConfig := client.TunnelConfig{
 				Topic:  tm.tunnelID,
 				Host:   tm.serverHost,
-				Port:   tm.port,
 				Path:   tm.wsPath,
 				Scheme: tm.wsScheme,
 			}
-			err := client.CreateWebSocketTunnel(tunConfig)
-
+			ep, err := client.TCPEndpoint("localhost", tm.port)
 			if err != nil {
+				slog.Info("tunnel shutting down", "port", tm.port, "id", tm.tunnelID)
+				return
+			}
+
+			if err := client.CreateWebSocketTunnel(tunConfig, ep); err != nil {
 				retryCount++
 				delay := tm.calculateBackoff(retryCount)
 
