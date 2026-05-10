@@ -339,6 +339,66 @@
     </div>
   </div>
 
+  <!-- ══ SECTION 05 — REMOTE COMMAND EXECUTION ══════════════════════════════ -->
+  <div class="mb-5">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <span class="section-badge bg-dark">05</span>
+      <span class="section-title">Remote Command Execution</span>
+      <div class="flex-grow-1 border-top"></div>
+      <span id="rce-status-badge" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
+        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected
+      </span>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+
+        <!-- Toolbar: topic config + connect button -->
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <p class="card-subtitle mb-0 me-2">
+            <i class="bi bi-terminal-fill me-2"></i>Shell
+          </p>
+          <div class="input-group input-group-sm" style="max-width: 440px;">
+            <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=publisher&amp;topic=</span>
+            <input type="text" id="rce-topic" class="form-control font-monospace"
+                   style="font-size:0.78rem;"
+                   value="{{ .UID }}_rce"
+                   placeholder="topic">
+          </div>
+          <button id="rce-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="rceToggleConnect()">
+            <i class="bi bi-plug-fill me-1"></i>Connect
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="rceClear()">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+
+        <!-- Terminal output -->
+        <div id="rce-output"
+             class="bg-dark text-light rounded p-3 font-monospace mb-0"
+             style="height: 380px; overflow-y: auto; font-size: 11px; line-height: 1.7;">
+          <div class="text-muted text-center mt-5">
+            <i class="bi bi-terminal me-2"></i>Click <strong>Connect</strong> to open a remote shell session
+          </div>
+        </div>
+
+        <!-- Command input (locked until connected) -->
+        <div class="input-group mt-3">
+          <span class="input-group-text bg-dark text-success border-secondary font-monospace" style="font-size:0.85rem;">$</span>
+          <input type="text" id="rce-input"
+                 class="form-control font-monospace bg-dark text-light border-secondary"
+                 style="font-size:0.85rem;"
+                 placeholder="Enter command…"
+                 disabled
+                 onkeydown="if(event.key==='Enter') rceSend()">
+          <button id="rce-run-btn" class="btn btn-success font-monospace" onclick="rceSend()" disabled>
+            <i class="bi bi-send-fill me-1"></i>Run
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ SECTION 04 — DIAGNOSTICS ════════════════════════════════════════════ -->
   <div class="mb-5">
     <div class="d-flex align-items-center gap-3 mb-4">
@@ -441,18 +501,22 @@
     min-width: 100px;
   }
 
-  #logs, #cmd-logs {
+  #logs, #cmd-logs, #rce-output {
     scrollbar-width: thin;
     scrollbar-color: #495057 #212529;
   }
   #logs::-webkit-scrollbar,
-  #cmd-logs::-webkit-scrollbar      { width: 8px; }
+  #cmd-logs::-webkit-scrollbar,
+  #rce-output::-webkit-scrollbar      { width: 8px; }
   #logs::-webkit-scrollbar-track,
-  #cmd-logs::-webkit-scrollbar-track { background: #212529; }
+  #cmd-logs::-webkit-scrollbar-track,
+  #rce-output::-webkit-scrollbar-track { background: #212529; }
   #logs::-webkit-scrollbar-thumb,
-  #cmd-logs::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
+  #cmd-logs::-webkit-scrollbar-thumb,
+  #rce-output::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
   #logs::-webkit-scrollbar-thumb:hover,
-  #cmd-logs::-webkit-scrollbar-thumb:hover { background-color: #6c757d; }
+  #cmd-logs::-webkit-scrollbar-thumb:hover,
+  #rce-output::-webkit-scrollbar-thumb:hover { background-color: #6c757d; }
 
   .input-group-sm .form-control { font-size: 0.8rem; }
 
@@ -706,7 +770,121 @@ document.addEventListener('DOMContentLoaded', function () {
 window.addEventListener('beforeunload', () => {
   if (socket)    socket.close();
   if (controlWS) { controlWS.onclose = null; controlWS.close(); }
+  if (rceWS)     { rceWS.onclose = null; rceWS.close(); }
 });
+
+// ── Remote Command Execution ──────────────────────────────────────────────────
+let rceWS          = null;
+let rceConnected   = false;
+const rceOutputEl  = document.getElementById('rce-output');
+
+function rceToggleConnect() {
+  rceConnected ? rceDisconnect() : rceConnect();
+}
+
+function rceConnect() {
+  const topic = document.getElementById('rce-topic').value.trim();
+  if (!topic) { rceLog('Topic cannot be empty.', 'text-danger'); return; }
+
+  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+  rceWS = new WebSocket(url);
+
+  rceLog(`Connecting to ${url} …`, 'text-muted');
+
+  rceWS.onopen = () => {
+    rceConnected = true;
+    rceSetConnected(true);
+    rceLog('Session opened. Type a command and press Run or Enter.', 'text-success');
+  };
+
+  rceWS.onmessage = (event) => {
+    const raw = typeof event.data === 'string' ? event.data : null;
+    if (!raw) { event.data.text().then(rceHandleResponse); return; }
+    rceHandleResponse(raw);
+  };
+
+  rceWS.onclose = (ev) => {
+    rceConnected = false;
+    rceSetConnected(false);
+    if (ev.code !== 1000) rceLog('Connection closed unexpectedly.', 'text-warning');
+    else rceLog('Session closed.', 'text-muted');
+    rceWS = null;
+  };
+
+  rceWS.onerror = () => {
+    rceLog('WebSocket error — check the topic and server URL.', 'text-danger');
+  };
+}
+
+function rceDisconnect() {
+  if (rceWS) { rceWS.close(1000, 'User disconnected'); rceWS = null; }
+  rceConnected = false;
+  rceSetConnected(false);
+}
+
+function rceSend() {
+  if (!rceWS || rceWS.readyState !== WebSocket.OPEN) {
+    rceLog('Not connected.', 'text-danger');
+    return;
+  }
+  const input = document.getElementById('rce-input');
+  const cmd   = input.value.trim();
+  if (!cmd) return;
+
+  rceLog(`$ ${cmd}`, 'text-info');
+  console.log(cmd)
+  rceWS.send(cmd);
+  input.value = '';
+}
+
+function rceHandleResponse(raw) {
+  let stdout = '', stderr = '';
+  try {
+    const msg = JSON.parse(raw);
+    stdout = msg.stdout || '';
+    stderr = msg.stderr || '';
+  } catch {
+    stdout = raw;
+  }
+  if (stdout) stdout.split('\n').forEach(line => { if (line) rceLog(line, 'text-light'); });
+  if (stderr) stderr.split('\n').forEach(line => { if (line) rceLog(line, 'text-danger'); });
+}
+
+function rceSetConnected(state) {
+  const badge  = document.getElementById('rce-status-badge');
+  const btn    = document.getElementById('rce-connect-btn');
+  const input  = document.getElementById('rce-input');
+  const runBtn = document.getElementById('rce-run-btn');
+
+  if (state) {
+    badge.className  = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
+    badge.innerHTML  = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Connected';
+    btn.innerHTML    = '<i class="bi bi-plug me-1"></i>Disconnect';
+    btn.className    = 'btn btn-sm btn-danger ms-auto';
+  } else {
+    badge.className  = 'badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2';
+    badge.innerHTML  = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected';
+    btn.innerHTML    = '<i class="bi bi-plug-fill me-1"></i>Connect';
+    btn.className    = 'btn btn-sm btn-primary ms-auto';
+  }
+  input.disabled  = !state;
+  runBtn.disabled = !state;
+  if (state) setTimeout(() => document.getElementById('rce-input').focus(), 50);
+}
+
+function rceLog(message, className = 'text-light') {
+  if (rceOutputEl.querySelector('.text-center')) rceOutputEl.innerHTML = '';
+  const ts    = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = `mb-0 ${className}`;
+  entry.innerHTML = `<span class="text-muted" style="user-select:none;">[${ts}]</span> ${escapeHTML(message)}`;
+  rceOutputEl.appendChild(entry);
+  rceOutputEl.scrollTop = rceOutputEl.scrollHeight;
+}
+
+function rceClear() {
+  rceOutputEl.innerHTML = '<div class="text-muted text-center mt-5"><i class="bi bi-terminal me-2"></i>Output cleared.</div>';
+}
 </script>
 
 <!-- Edit Config Modal -->
