@@ -17,6 +17,7 @@
 
   <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
+
       <!-- Topic + Connect -->
       <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <div class="input-group input-group-sm" style="max-width: 480px;">
@@ -26,18 +27,24 @@
                  value="{{ .UID }}_cmd"
                  placeholder="topic">
         </div>
-        <button id="rce-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="rceToggleConnect()">
-          <i class="bi bi-plug-fill me-1"></i>Connect
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="rceClear()" title="Clear output">
-          <i class="bi bi-trash"></i>
-        </button>
+        <div class="d-flex gap-2 ms-auto">
+          <button id="rce-connect-btn" class="btn btn-sm btn-primary" onclick="rceToggleConnect()">
+            <i class="bi bi-plug-fill me-1"></i>Connect
+          </button>
+          <div class="vr d-none" id="rce-session-divider"></div>
+          <button id="rce-kill-btn" class="btn btn-sm btn-outline-danger d-none" onclick="rceSendExit()" title="Send exit — kill running process">
+            <i class="bi bi-x-octagon-fill me-1"></i>Kill
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="rceClear()" title="Clear output">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Output -->
       <div id="rce-output"
            class="bg-dark text-light rounded p-3 font-monospace"
-           style="height: calc(100vh - 320px); min-height: 320px; overflow-y: auto; font-size: 11px; line-height: 1.7;">
+           style="height: calc(100vh - 340px); min-height: 300px; overflow-y: auto; font-size: 11px; line-height: 1.7;">
         <div class="text-muted text-center mt-5">
           <i class="bi bi-terminal me-2"></i>Click <strong>Connect</strong> to open a remote shell session
         </div>
@@ -49,13 +56,20 @@
         <input type="text" id="rce-input"
                class="form-control font-monospace bg-dark text-light border-secondary"
                style="font-size:0.85rem;"
-               placeholder="Enter command…"
+               placeholder="Enter command… (↑↓ history, Enter to run)"
                disabled
-               onkeydown="if(event.key==='Enter') rceSend()">
+               onkeydown="rceHandleKey(event)">
         <button id="rce-run-btn" class="btn btn-success font-monospace" onclick="rceSend()" disabled>
           <i class="bi bi-send-fill me-1"></i>Run
         </button>
+        <button id="rce-stop-btn" class="btn btn-outline-danger font-monospace d-none" onclick="rceSendExit()" title="Send exit (kill process)">
+          <i class="bi bi-stop-fill"></i>
+        </button>
       </div>
+      <div class="d-flex justify-content-end mt-1">
+        <span class="text-muted" style="font-size:0.72rem;">↑↓ history &nbsp;·&nbsp; Enter to run &nbsp;·&nbsp; Kill sends <code>exit</code></span>
+      </div>
+
     </div>
   </div>
 </div>
@@ -65,6 +79,11 @@
   #rce-output::-webkit-scrollbar { width: 8px; }
   #rce-output::-webkit-scrollbar-track { background: #212529; }
   #rce-output::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
+
+  #rce-input:disabled { opacity: 0.45; }
+  #rce-input:focus { box-shadow: none; border-color: #198754 !important; }
+
+  #rce-kill-btn, #rce-stop-btn { transition: opacity 0.15s; }
 </style>
 
 <script>
@@ -73,6 +92,10 @@ document.querySelectorAll('.js-ws-proto').forEach(el => { el.textContent = wsPro
 
 let rceWS        = null;
 let rceConnected = false;
+let rceCmdHistory = [];
+let rceCmdIdx     = -1;
+let rcePendingCmd = '';
+
 const rceOutputEl = document.getElementById('rce-output');
 
 function rceToggleConnect() {
@@ -119,9 +142,46 @@ function rceSend() {
   const input = document.getElementById('rce-input');
   const cmd   = input.value.trim();
   if (!cmd) return;
+
+  if (rceCmdHistory[0] !== cmd) rceCmdHistory.unshift(cmd);
+  if (rceCmdHistory.length > 100) rceCmdHistory.pop();
+  rceCmdIdx = -1;
+  rcePendingCmd = '';
+
   rceLog(`$ ${cmd}`, 'text-info');
   rceWS.send(cmd);
   input.value = '';
+}
+
+function rceSendExit() {
+  if (!rceWS || rceWS.readyState !== WebSocket.OPEN) { rceLog('Not connected.', 'text-danger'); return; }
+  rceLog('$ exit', 'text-warning');
+  rceWS.send('exit');
+}
+
+function rceHandleKey(event) {
+  const input = document.getElementById('rce-input');
+  if (event.key === 'Enter') {
+    rceSend();
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (rceCmdHistory.length === 0) return;
+    if (rceCmdIdx === -1) rcePendingCmd = input.value;
+    rceCmdIdx = Math.min(rceCmdIdx + 1, rceCmdHistory.length - 1);
+    input.value = rceCmdHistory[rceCmdIdx];
+    input.setSelectionRange(input.value.length, input.value.length);
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    if (rceCmdIdx === -1) return;
+    rceCmdIdx--;
+    input.value = rceCmdIdx === -1 ? rcePendingCmd : rceCmdHistory[rceCmdIdx];
+    input.setSelectionRange(input.value.length, input.value.length);
+    return;
+  }
 }
 
 function rceHandleResponse(raw) {
@@ -133,20 +193,30 @@ function rceHandleResponse(raw) {
 }
 
 function rceSetConnected(state) {
-  const badge  = document.getElementById('rce-status-badge');
-  const btn    = document.getElementById('rce-connect-btn');
-  const input  = document.getElementById('rce-input');
-  const runBtn = document.getElementById('rce-run-btn');
+  const badge    = document.getElementById('rce-status-badge');
+  const btn      = document.getElementById('rce-connect-btn');
+  const input    = document.getElementById('rce-input');
+  const runBtn   = document.getElementById('rce-run-btn');
+  const killBtn  = document.getElementById('rce-kill-btn');
+  const stopBtn  = document.getElementById('rce-stop-btn');
+  const divider  = document.getElementById('rce-session-divider');
 
   badge.className = state
     ? 'ms-auto badge bg-success-subtle text-success border border-success-subtle px-3 py-2'
     : 'ms-auto badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2';
   badge.innerHTML = `<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> ${state ? 'Connected' : 'Disconnected'}`;
-  btn.innerHTML   = state ? '<i class="bi bi-plug me-1"></i>Disconnect' : '<i class="bi bi-plug-fill me-1"></i>Connect';
-  btn.className   = state ? 'btn btn-sm btn-danger ms-auto' : 'btn btn-sm btn-primary ms-auto';
+
+  btn.innerHTML = state ? '<i class="bi bi-plug me-1"></i>Disconnect' : '<i class="bi bi-plug-fill me-1"></i>Connect';
+  btn.className = state ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-primary';
+
+  killBtn.classList.toggle('d-none', !state);
+  stopBtn.classList.toggle('d-none', !state);
+  divider.classList.toggle('d-none', !state);
+
   input.disabled  = !state;
   runBtn.disabled = !state;
-  if (state) setTimeout(() => document.getElementById('rce-input').focus(), 50);
+
+  if (state) setTimeout(() => input.focus(), 50);
 }
 
 function rceLog(message, className = 'text-light') {
