@@ -19,6 +19,7 @@ type TunnelManager struct {
 	wsScheme        string
 	label           string
 	endpointFactory EndpointFactory
+	cancel          context.CancelFunc
 
 	maxRetries int
 	baseDelay  time.Duration
@@ -26,7 +27,7 @@ type TunnelManager struct {
 }
 
 // NewTunnelManager creates a new tunnel manager instance
-func NewTunnelManager(serverHost, wsPath, tunnelID, label string, factory EndpointFactory) *TunnelManager {
+func NewTunnelManager(serverHost, wsPath, tunnelID, label string, factory EndpointFactory, cancel context.CancelFunc) *TunnelManager {
 	return &TunnelManager{
 		serverHost:      serverHost,
 		wsPath:          wsPath,
@@ -34,10 +35,17 @@ func NewTunnelManager(serverHost, wsPath, tunnelID, label string, factory Endpoi
 		tunnelID:        tunnelID,
 		label:           label,
 		endpointFactory: factory,
+		cancel:          cancel,
 		maxRetries:      -1, // infinite retries
 		baseDelay:       2 * time.Second,
 		maxDelay:        2 * time.Minute,
 	}
+}
+
+// Stop cancels the tunnel's context, causing it to shut down gracefully.
+func (tm *TunnelManager) Stop() {
+	slog.Info("stopping tunnel", "label", tm.label, "id", tm.tunnelID)
+	tm.cancel()
 }
 
 // Start begins the tunnel connection with automatic reconnection
@@ -64,7 +72,7 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 				return
 			}
 
-			if err := client.CreateWebSocketTunnel(tunConfig, ep); err != nil {
+			if err := client.CreateWebSocketTunnel(ctx, tunConfig, ep); err != nil {
 				retryCount++
 				delay := tm.calculateBackoff(retryCount)
 

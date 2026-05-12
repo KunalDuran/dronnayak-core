@@ -81,9 +81,18 @@ func (d *Dronnayak) processEvent(resp []byte) {
 		case EventStartTunnel:
 			var evt data.TunnelEntry
 			if err := json.Unmarshal(cmd.Payload, &evt); err != nil {
-				slog.Error("failed to unmarshal tunnel response", "error", err)
+				slog.Error("failed to unmarshal start_tunnel payload", "error", err)
+				continue
 			}
-			d.startTunnels(context.Background(), []data.TunnelEntry{evt})
+			d.startTunnels(d.ctx, []data.TunnelEntry{evt})
+
+		case EventStopTunnel:
+			var evt data.TunnelEntry
+			if err := json.Unmarshal(cmd.Payload, &evt); err != nil {
+				slog.Error("failed to unmarshal stop_tunnel payload", "error", err)
+				continue
+			}
+			d.stopTunnel(d.makeTunnelID(evt))
 		}
 	}
 }

@@ -21,7 +21,9 @@ import (
 type Dronnayak struct {
 	mavNode        *gomavlib.Node
 	config         *data.Config
-	tunnelManagers []*TunnelManager
+	ctx            context.Context
+	tunnelManagers map[string]*TunnelManager
+	tunnelMu       sync.Mutex
 	wg             sync.WaitGroup
 }
 
@@ -39,14 +41,16 @@ func NewDronnayak(configPath string) (*Dronnayak, error) {
 	}
 
 	return &Dronnayak{
-		config: config,
+		config:         config,
+		tunnelManagers: make(map[string]*TunnelManager),
 	}, nil
 }
 
 // Run starts the application and blocks until shutdown
 func (d *Dronnayak) Run(ctx context.Context) error {
-	// Create a cancellable context
+	// Create a cancellable context and store it so goroutines started later inherit it
 	ctx, cancel := context.WithCancel(ctx)
+	d.ctx = ctx
 	defer cancel()
 
 	// Handle graceful shutdown
@@ -208,7 +212,30 @@ func endpointFactory(entry data.TunnelEntry) (EndpointFactory, error) {
 	}
 }
 
-// startTunnels starts WebSocket tunnels for all configured endpoints with reconnection
+// makeTunnelID builds the unique tunnel ID for a given endpoint entry.
+func (d *Dronnayak) makeTunnelID(entry data.TunnelEntry) string {
+	label := entry.Label
+	if label == "" {
+		label = string(entry.Type)
+	}
+	return fmt.Sprintf("%s_%s", d.config.UUID, label)
+}
+
+// stopTunnel gracefully stops the tunnel with the given ID by cancelling its context.
+func (d *Dronnayak) stopTunnel(tunnelID string) {
+	d.tunnelMu.Lock()
+	tm, ok := d.tunnelManagers[tunnelID]
+	d.tunnelMu.Unlock()
+
+	if !ok {
+		slog.Warn("stop requested for unknown tunnel", "id", tunnelID)
+		return
+	}
+	tm.Stop()
+}
+
+// startTunnels starts WebSocket tunnels for the given endpoints with automatic reconnection.
+// It is safe to call multiple times; already-running tunnels are skipped.
 func (d *Dronnayak) startTunnels(ctx context.Context, endpoints []data.TunnelEntry) {
 	if len(endpoints) == 0 {
 		slog.Warn("no tunnel endpoints configured")
@@ -216,35 +243,50 @@ func (d *Dronnayak) startTunnels(ctx context.Context, endpoints []data.TunnelEnt
 	}
 
 	serverHost := d.cleanServerURL(d.config.Server.URL)
-	d.tunnelManagers = make([]*TunnelManager, 0, len(endpoints))
+	started := 0
 
 	for _, entry := range endpoints {
-		label := entry.Label
-		if label == "" {
-			label = string(entry.Type)
-		}
-		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, label)
+		tunnelID := d.makeTunnelID(entry)
 
-		factory, err := endpointFactory(entry)
-		if err != nil {
-			slog.Warn("skipping tunnel endpoint", "label", label, "error", err)
+		d.tunnelMu.Lock()
+		_, exists := d.tunnelManagers[tunnelID]
+		d.tunnelMu.Unlock()
+
+		if exists {
+			slog.Warn("tunnel already running, skipping", "id", tunnelID)
 			continue
 		}
 
-		tm := NewTunnelManager(serverHost, d.config.Tunnel.WSPath, tunnelID, label, factory)
+		factory, err := endpointFactory(entry)
+		if err != nil {
+			slog.Warn("skipping tunnel endpoint", "label", entry.Label, "error", err)
+			continue
+		}
+
+		tunnelCtx, tunnelCancel := context.WithCancel(ctx)
+		tm := NewTunnelManager(serverHost, d.config.Tunnel.WSPath, tunnelID, entry.Label, factory, tunnelCancel)
 		if strings.Contains(d.config.Server.URL, "https") {
 			tm.wsScheme = "wss"
 		}
-		d.tunnelManagers = append(d.tunnelManagers, tm)
 
+		d.tunnelMu.Lock()
+		d.tunnelManagers[tunnelID] = tm
+		d.tunnelMu.Unlock()
+
+		started++
 		d.wg.Add(1)
 		go func(manager *TunnelManager) {
 			defer d.wg.Done()
-			manager.Start(ctx)
+			defer func() {
+				d.tunnelMu.Lock()
+				delete(d.tunnelManagers, manager.tunnelID)
+				d.tunnelMu.Unlock()
+			}()
+			manager.Start(tunnelCtx)
 		}(tm)
 	}
 
-	slog.Info("tunnels started", "count", len(d.tunnelManagers), "auto_reconnect", true)
+	slog.Info("tunnels started", "count", started, "auto_reconnect", true)
 }
 
 // cleanServerURL removes http/https schema from server URL

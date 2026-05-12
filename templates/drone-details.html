@@ -244,8 +244,9 @@
               </button>
             </div>
             {{ $root := . }}
+            {{ if .LiveTunnelTopics }}
             {{ range $index, $topic := .LiveTunnelTopics }}
-            <div class="mb-2">
+            <div class="mb-2" id="relay-row-{{ $index }}">
               <div class="input-group input-group-sm">
                 <input type="text"
                        class="form-control font-monospace bg-light"
@@ -255,8 +256,16 @@
                 <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('relay-{{ $index }}')">
                   <i class="bi bi-clipboard"></i>
                 </button>
+                <button class="btn btn-outline-danger stop-tunnel-btn" type="button"
+                        title="Stop tunnel"
+                        onclick="stopTunnel(this, '{{ $topic }}')">
+                  <i class="bi bi-stop-circle"></i>
+                </button>
               </div>
             </div>
+            {{ end }}
+            {{ else }}
+            <p class="text-muted small mb-0">No active tunnels</p>
             {{ end }}
           </div>
         </div>
@@ -547,6 +556,54 @@ document.addEventListener('DOMContentLoaded', function () {
     const el = document.getElementById('nt-alert');
     el.className = `alert alert-${type}`;
     el.textContent = msg;
+  }
+
+  const _stopTimers = {};
+
+  function stopTunnel(btn, topic) {
+    if (btn.dataset.confirming) {
+      clearTimeout(_stopTimers[topic]);
+      delete _stopTimers[topic];
+
+      const label = topic.startsWith(droneUID + '_') ? topic.slice(droneUID.length + 1) : topic;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+      btn.classList.replace('btn-danger', 'btn-outline-danger');
+      delete btn.dataset.confirming;
+
+      fetch(`/device/${droneUID}/commands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'stop_tunnel', payload: { label } }),
+      })
+        .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(t)))
+        .then(() => {
+          const row = btn.closest('[id^="relay-row-"]');
+          row.style.transition = 'opacity 0.4s';
+          row.style.opacity = '0.4';
+          btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+          btn.classList.replace('btn-outline-danger', 'btn-success');
+        })
+        .catch(err => {
+          btn.disabled = false;
+          _resetStopBtn(btn);
+          console.error('stop_tunnel failed:', err);
+        });
+    } else {
+      btn.dataset.confirming = 'true';
+      btn.innerHTML = 'Stop?';
+      btn.classList.replace('btn-outline-danger', 'btn-danger');
+
+      _stopTimers[topic] = setTimeout(() => {
+        delete btn.dataset.confirming;
+        _resetStopBtn(btn);
+      }, 3000);
+    }
+  }
+
+  function _resetStopBtn(btn) {
+    btn.innerHTML = '<i class="bi bi-stop-circle"></i>';
+    btn.classList.replace('btn-danger', 'btn-outline-danger');
   }
 
   function editEndpointRowHTML(type, port, label) {
