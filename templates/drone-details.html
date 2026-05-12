@@ -272,16 +272,23 @@
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body p-4">
-            <p class="card-subtitle mb-3">
-              <i class="bi bi-broadcast me-2"></i>Open Relays
-            </p>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <p class="card-subtitle mb-0">
+                <i class="bi bi-broadcast me-2"></i>Open Relays
+              </p>
+              <button class="btn btn-sm btn-outline-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#newTunnelModal">
+                <i class="bi bi-plus-circle me-1"></i>New Tunnel
+              </button>
+            </div>
             {{ $root := . }}
-            {{ range $index, $port := .DeviceConfig.Tunnel.Ports }}
+            {{ range $index, $port := .DeviceConfig.Tunnel.Endpoints }}
             <div class="mb-2">
               <div class="input-group input-group-sm">
                 <input type="text"
                        class="form-control font-monospace bg-light"
-                       value="ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port }}"
+                       value="ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port.Label }}"
                        readonly
                        id="relay-{{ $index }}">
                 <button class="btn btn-outline-secondary"
@@ -885,6 +892,87 @@ function rceLog(message, className = 'text-light') {
 function rceClear() {
   rceOutputEl.innerHTML = '<div class="text-muted text-center mt-5"><i class="bi bi-terminal me-2"></i>Output cleared.</div>';
 }
+</script>
+
+<!-- New Tunnel Modal -->
+<div class="modal fade" id="newTunnelModal" tabindex="-1" aria-labelledby="newTunnelModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h5 class="modal-title fw-bold mb-1" id="newTunnelModalLabel">New Tunnel</h5>
+          <p class="text-muted small mb-0">Queue a command to open a new relay on the device</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <div class="mb-3">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="nt-type" onchange="onNtTypeChange()">
+            <option value="tcp">TCP</option>
+            <option value="cmd">CMD (RCE)</option>
+          </select>
+        </div>
+        <div class="mb-3" id="nt-port-group">
+          <label class="form-label">Port</label>
+          <input type="text" class="form-control font-monospace" id="nt-port" placeholder="e.g. 5760">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Label <span class="text-muted">(optional)</span></label>
+          <input type="text" class="form-control" id="nt-label" placeholder="auto-filled from port if blank">
+        </div>
+        <div id="nt-alert" class="alert d-none" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-4" onclick="submitNewTunnel()">
+          <i class="bi bi-send me-1"></i>Send Command
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function onNtTypeChange() {
+    const type = document.getElementById('nt-type').value;
+    document.getElementById('nt-port-group').style.display = type === 'tcp' ? '' : 'none';
+  }
+
+  function submitNewTunnel() {
+    const type  = document.getElementById('nt-type').value;
+    const port  = document.getElementById('nt-port').value.trim();
+    const label = document.getElementById('nt-label').value.trim();
+
+    if (type === 'tcp' && !port) {
+      ntAlert('Port is required for TCP tunnels.', 'danger');
+      return;
+    }
+
+    const payload = { type, port, label: label || (type === 'tcp' ? port : type) };
+
+    fetch(`/device/${droneUID}/commands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'start_tunnel', payload }),
+    })
+      .then(r => {
+        if (!r.ok) return r.text().then(t => Promise.reject(t));
+        return r.json();
+      })
+      .then(() => {
+        ntAlert('Tunnel command queued. The device will open the relay on its next heartbeat.', 'success');
+        document.getElementById('nt-port').value  = '';
+        document.getElementById('nt-label').value = '';
+      })
+      .catch(err => ntAlert('Failed: ' + err, 'danger'));
+  }
+
+  function ntAlert(msg, type) {
+    const el = document.getElementById('nt-alert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+  }
 </script>
 
 <!-- Edit Config Modal -->

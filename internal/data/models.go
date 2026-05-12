@@ -1,5 +1,12 @@
 package data
 
+import (
+	"encoding/json"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
 type User struct {
 	Name     string `json:"name" bson:"name"`
 	Email    string `json:"email" bson:"email"`
@@ -21,6 +28,21 @@ type Drone struct {
 	Status      ResourceStats `json:"status" bson:"status"`
 
 	DeviceConfig Config `json:"device_config" bson:"device_config"`
+}
+
+type DroneCommands struct {
+	ID       primitive.ObjectID `bson:"_id"`
+	DroneUID string             `json:"drone_uid" bson:"drone_uid"`
+
+	Type    string          `json:"type" bson:"type"`
+	Payload json.RawMessage `json:"payload" bson:"payload"`
+
+	Status string `json:"status" bson:"status"` // pending, done, failed
+
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+
+	ExecutedAt *time.Time `json:"executed_at" bson:"executed_at,omitempty"`
 }
 
 type ResourceStats struct {

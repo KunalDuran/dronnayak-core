@@ -379,7 +379,7 @@ func updateDeviceConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"device_config": cfg}); err != nil {
+	if err := data.UpsertOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"device_config": cfg}); err != nil {
 		slog.Error("failed to update drone config", "drone_id", droneID, "error", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
@@ -417,13 +417,29 @@ func deviceStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status.LastUpdated = time.Now().Unix()
-	if err := data.UpdateOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": status}); err != nil {
+	if err := data.UpsertOne("drone", map[string]interface{}{"uid": droneID}, map[string]interface{}{"status": status}); err != nil {
 		slog.Error("failed to update drone status", "drone_id", droneID, "error", err)
 		http.Error(w, "error", http.StatusInternalServerError)
 		return
 	}
 
-	w.Write([]byte("status updated"))
+	var droneCommand []data.DroneCommands
+	if err := data.FindAll("drone_commands", map[string]interface{}{"drone_uid": droneID, "status": "pending"}, &droneCommand); err != nil {
+		slog.Error("failed to find drone commands", "drone_id", droneID, "error", err)
+		http.Error(w, "drone not found", http.StatusNotFound)
+		return
+	}
+
+	for _, command := range droneCommand {
+		if err := data.UpdateOne("drone_commands", map[string]interface{}{"drone_uid": droneID, "_id": command.ID}, map[string]interface{}{"status": "done"}); err != nil {
+			slog.Error("failed to update drone commands", "drone_id", droneID, "error", err)
+			http.Error(w, "drone not found", http.StatusNotFound)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(droneCommand)
 }
 
 // getInstallCommand returns the install command for a specific drone
@@ -486,4 +502,56 @@ func getServerPath(r *http.Request) string {
 
 func logViewer(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "log-viewer", nil)
+}
+
+func createDroneCommand(w http.ResponseWriter, r *http.Request) {
+	droneID := chi.URLParam(r, "drone_id")
+	if droneID == "" {
+		http.Error(w, "missing drone_id", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1*1024*1024)
+
+	var req struct {
+		Type    string          `json:"type"`
+		Payload json.RawMessage `json:"payload"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Type == "" {
+		http.Error(w, "missing command type", http.StatusBadRequest)
+		return
+	}
+
+	var drone data.Drone
+	if err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone); err != nil {
+		http.Error(w, "drone not found", http.StatusNotFound)
+		return
+	}
+
+	now := time.Now()
+	cmd := data.DroneCommands{
+		ID:        data.GenerateObjectID(),
+		DroneUID:  droneID,
+		Type:      req.Type,
+		Payload:   req.Payload,
+		Status:    "pending",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	if err := data.InsertOne("drone_commands", cmd); err != nil {
+		slog.Error("failed to create drone command", "drone_id", droneID, "error", err)
+		http.Error(w, "failed to create drone command", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("drone command created", "drone_id", droneID, "type", cmd.Type)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(cmd)
 }

@@ -118,6 +118,14 @@ func UpdateOne(collection string, filter map[string]interface{}, update map[stri
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	slog.Debug("db update one", "collection", collection)
+	_, err := GetCollection(collection).UpdateOne(ctx, bson.M(filter), bson.M{"$set": update})
+	return err
+}
+
+func UpsertOne(collection string, filter map[string]interface{}, update map[string]interface{}, opts ...*options.UpdateOptions) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	slog.Debug("db update one", "collection", collection)
 	_, err := GetCollection(collection).UpdateOne(ctx, bson.M(filter), bson.M{"$set": update}, options.Update().SetUpsert(true))
 	return err
 }
@@ -137,4 +145,8 @@ func TryStringToObjectID(id string) primitive.ObjectID {
 		return primitive.ObjectID{}
 	}
 	return o
+}
+
+func GenerateObjectID() primitive.ObjectID {
+	return primitive.NewObjectID()
 }

@@ -67,7 +67,7 @@ func (d *Dronnayak) Run(ctx context.Context) error {
 	}()
 
 	// Start WebSocket tunnels
-	d.startTunnels(ctx)
+	d.startTunnels(ctx, d.config.Tunnel.Endpoints)
 
 	// Start stats reporting if enabled
 	if d.config.Stats.Enabled {
@@ -209,16 +209,16 @@ func endpointFactory(entry data.TunnelEntry) (EndpointFactory, error) {
 }
 
 // startTunnels starts WebSocket tunnels for all configured endpoints with reconnection
-func (d *Dronnayak) startTunnels(ctx context.Context) {
-	if len(d.config.Tunnel.Endpoints) == 0 {
+func (d *Dronnayak) startTunnels(ctx context.Context, endpoints []data.TunnelEntry) {
+	if len(endpoints) == 0 {
 		slog.Warn("no tunnel endpoints configured")
 		return
 	}
 
 	serverHost := d.cleanServerURL(d.config.Server.URL)
-	d.tunnelManagers = make([]*TunnelManager, 0, len(d.config.Tunnel.Endpoints))
+	d.tunnelManagers = make([]*TunnelManager, 0, len(endpoints))
 
-	for _, entry := range d.config.Tunnel.Endpoints {
+	for _, entry := range endpoints {
 		label := entry.Label
 		if label == "" {
 			label = string(entry.Type)
