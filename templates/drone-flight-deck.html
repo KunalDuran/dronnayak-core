@@ -1,0 +1,195 @@
+{{ define "content" }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="container-fluid mt-4 mb-5 px-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/device/{{ .UID }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <span class="fw-semibold fs-5">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</span>
+      <span class="text-muted small ms-2">&middot; Flight Deck</span>
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <span id="ws-status" class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
+        <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Disconnected
+      </span>
+      <div class="text-end">
+        <small class="d-block text-muted" style="font-size: 0.7rem;">Battery</small>
+        <span id="battery-display" class="fw-bold fs-4 lh-1">--%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Map + Telemetry + Commands -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div id="map" style="height: 480px; border-radius: 8px 8px 0 0; z-index: 0;"></div>
+
+        <div class="d-flex justify-content-around border-top px-4 py-3 bg-body-tertiary">
+          <div class="text-center">
+            <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Altitude</small>
+            <span class="fw-bold fs-4" id="telem-alt">--</span>
+            <small class="text-muted ms-1">m</small>
+          </div>
+          <div class="vr"></div>
+          <div class="text-center">
+            <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Speed</small>
+            <span class="fw-bold fs-4" id="telem-speed">--</span>
+            <small class="text-muted ms-1">m/s</small>
+          </div>
+          <div class="vr"></div>
+          <div class="text-center">
+            <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Mode</small>
+            <span class="fw-bold fs-4" id="telem-mode">--</span>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 border-top px-4 py-3 justify-content-center flex-wrap">
+          <button class="cmd-btn btn btn-success"  onclick="sendCommand('ARM')"     disabled>ARM</button>
+          <button class="cmd-btn btn btn-primary"  onclick="sendCommand('TAKEOFF')" disabled>TAKEOFF</button>
+          <button class="cmd-btn btn btn-warning"  onclick="sendCommand('LAND')"    disabled>LAND</button>
+          <button class="cmd-btn btn btn-danger"   onclick="sendCommand('RTL')"     disabled>RTL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Logs -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4 d-flex flex-column">
+          <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">
+            <i class="bi bi-controller text-primary me-2"></i>Control Logs
+          </p>
+          <div id="cmd-logs"
+               class="bg-dark text-light rounded p-3 font-monospace flex-grow-1"
+               style="min-height: 300px; overflow-y: auto; font-size: 11px; line-height: 1.6;">
+            <div class="text-muted" data-placeholder="1">Connecting to control server…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cmd-btn { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; padding: 10px 20px; min-width: 100px; }
+  #cmd-logs { scrollbar-width: thin; scrollbar-color: #495057 #212529; }
+  #cmd-logs::-webkit-scrollbar { width: 8px; }
+  #cmd-logs::-webkit-scrollbar-track { background: #212529; }
+  #cmd-logs::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
+  @media (max-width: 768px) { .cmd-btn { min-width: unset; padding: 10px 8px; font-size: 13px; } }
+</style>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const WS_CONTROL_URL = 'ws://localhost:8080/ws';
+const MAX_CMD_LOGS   = 50;
+
+let controlWS    = null;
+let controlTimer = null;
+let map          = null;
+let droneMarker  = null;
+
+function initMap() {
+  map = L.map('map').setView([20.5937, 78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const icon = L.divIcon({
+    html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">✈</div>',
+    className: '',
+    iconSize:   [28, 28],
+    iconAnchor: [14, 14],
+  });
+  droneMarker = L.marker([20.5937, 78.9629], { icon }).addTo(map);
+}
+
+function connectControlWS() {
+  if (controlWS) { controlWS.onclose = null; controlWS.close(); }
+  controlWS = new WebSocket(WS_CONTROL_URL);
+
+  controlWS.onopen = () => {
+    clearTimeout(controlTimer);
+    addCmdLog('Connected to control server', 'text-success');
+  };
+
+  controlWS.onmessage = (event) => {
+    try { handleControlMessage(JSON.parse(event.data)); }
+    catch { addCmdLog('Bad message received', 'text-warning'); }
+  };
+
+  controlWS.onclose = () => {
+    setWSConnected(false);
+    addCmdLog('Disconnected — retrying in 3s…', 'text-warning');
+    controlTimer = setTimeout(connectControlWS, 3000);
+  };
+
+  controlWS.onerror = () => addCmdLog('Connection error', 'text-danger');
+}
+
+function handleControlMessage(msg) {
+  if (msg.type === 'telemetry') applyTelemetry(msg);
+  else if (msg.type === 'status') setWSConnected(msg.connected);
+}
+
+function applyTelemetry(d) {
+  document.getElementById('telem-alt').textContent   = d.alt.toFixed(1);
+  document.getElementById('telem-speed').textContent = d.speed.toFixed(1);
+  document.getElementById('telem-mode').textContent  = d.mode;
+  document.getElementById('battery-display').textContent = d.battery + '%';
+  const pos = [d.lat, d.lng];
+  droneMarker.setLatLng(pos);
+  map.panTo(pos);
+}
+
+function setWSConnected(state) {
+  const el = document.getElementById('ws-status');
+  el.className = state
+    ? 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2'
+    : 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2';
+  el.innerHTML = `<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> ${state ? 'Connected' : 'Disconnected'}`;
+  document.querySelectorAll('.cmd-btn').forEach(btn => { btn.disabled = !state; });
+}
+
+function sendCommand(action) {
+  if (!controlWS || controlWS.readyState !== WebSocket.OPEN) {
+    addCmdLog('Not connected', 'text-danger');
+    return;
+  }
+  controlWS.send(JSON.stringify({ type: 'command', action }));
+  addCmdLog('Sent: ' + action, 'text-primary');
+}
+
+function addCmdLog(message, className = '') {
+  const cmdLogs = document.getElementById('cmd-logs');
+  if (cmdLogs.firstElementChild?.dataset.placeholder) cmdLogs.innerHTML = '';
+  const ts    = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = `mb-1 ${className}`;
+  entry.innerHTML = `<span class="text-muted">[${ts}]</span> ${escapeHTML(message)}`;
+  cmdLogs.appendChild(entry);
+  while (cmdLogs.children.length > MAX_CMD_LOGS) cmdLogs.removeChild(cmdLogs.firstChild);
+  cmdLogs.scrollTop = cmdLogs.scrollHeight;
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  setWSConnected(false);
+  connectControlWS();
+});
+
+window.addEventListener('beforeunload', () => {
+  if (controlWS) { controlWS.onclose = null; controlWS.close(); }
+});
+</script>
+{{ end }}

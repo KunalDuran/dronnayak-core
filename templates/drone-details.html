@@ -1,106 +1,77 @@
 {{ define "content" }}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <div class="container-fluid mt-4 mb-5 px-4">
 
-  <!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
-  <div class="mb-5">
-    <div class="mb-3">
-      <a href="/fleets/{{ .FleetID }}" class="text-decoration-none text-muted">
+  <!-- Header -->
+  <div class="mb-4">
+    <div class="mb-2">
+      <a href="/fleets/{{ .FleetID }}" class="text-decoration-none text-muted small">
         <i class="bi bi-arrow-left me-1"></i>Back to Fleet
       </a>
     </div>
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
       <div>
-        <h1 class="fw-bold mb-2">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</h1>
+        <h1 class="fw-bold mb-2 fs-3">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</h1>
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
             <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Online
           </span>
-          <span id="ws-status" class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
-            <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Control: Disconnected
-          </span>
-          <span class="text-muted small">{{ .UID }}</span>
+          <span class="text-muted small font-monospace">{{ .UID }}</span>
         </div>
       </div>
       <div class="text-end">
         <small class="d-block text-muted text-uppercase fw-semibold" style="font-size: 0.7rem; letter-spacing: 1px;">Battery</small>
-        <span id="battery-display" class="fw-bold fs-2 lh-1">--%</span>
+        <span class="fw-bold fs-2 lh-1">--</span>
       </div>
     </div>
   </div>
 
-  <!-- ══ SECTION 01 — FLIGHT DECK ════════════════════════════════════════════ -->
+  <!-- Quick Access -->
   <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-primary">01</span>
-      <span class="section-title">Flight Deck</span>
-      <div class="flex-grow-1 border-top"></div>
-    </div>
-
+    <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">Tools</p>
     <div class="row g-3">
-      <!-- Map + Telemetry Strip + Command Buttons -->
-      <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-          <div id="map" style="height: 420px; border-radius: 8px 8px 0 0; z-index: 0;"></div>
-
-          <!-- Telemetry Strip -->
-          <div class="d-flex justify-content-around border-top px-4 py-3 bg-body-tertiary">
-            <div class="text-center">
-              <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Altitude</small>
-              <span class="fw-bold fs-4" id="telem-alt">--</span>
-              <small class="text-muted ms-1">m</small>
-            </div>
-            <div class="vr"></div>
-            <div class="text-center">
-              <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Speed</small>
-              <span class="fw-bold fs-4" id="telem-speed">--</span>
-              <small class="text-muted ms-1">m/s</small>
-            </div>
-            <div class="vr"></div>
-            <div class="text-center">
-              <small class="d-block text-uppercase text-muted fw-semibold mb-1" style="font-size: 0.7rem; letter-spacing: 1px;">Mode</small>
-              <span class="fw-bold fs-4" id="telem-mode">--</span>
-            </div>
+      <div class="col-6 col-lg-3">
+        <a href="/device/{{ .UID }}/flight-deck" target="_blank" class="card border-0 shadow-sm text-decoration-none h-100 card-hover">
+          <div class="card-body text-center py-4">
+            <i class="bi bi-map fs-2 text-primary mb-2 d-block"></i>
+            <div class="fw-semibold text-body">Flight Deck</div>
+            <small class="text-muted">Map, telemetry &amp; control</small>
           </div>
-
-          <!-- Command Buttons -->
-          <div class="d-flex gap-2 border-top px-4 py-3 justify-content-center flex-wrap">
-            <button class="cmd-btn btn btn-success"  id="btn-arm"     onclick="sendCommand('ARM')"     disabled>ARM</button>
-            <button class="cmd-btn btn btn-primary"  id="btn-takeoff" onclick="sendCommand('TAKEOFF')" disabled>TAKEOFF</button>
-            <button class="cmd-btn btn btn-warning"  id="btn-land"    onclick="sendCommand('LAND')"    disabled>LAND</button>
-            <button class="cmd-btn btn btn-danger"   id="btn-rtl"     onclick="sendCommand('RTL')"     disabled>RTL</button>
-          </div>
-        </div>
+        </a>
       </div>
-
-      <!-- Control Logs -->
-      <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-4 d-flex flex-column">
-            <p class="card-subtitle mb-3">
-              <i class="bi bi-controller text-primary me-2"></i>Control Logs
-            </p>
-            <div id="cmd-logs"
-                 class="bg-dark text-light rounded p-3 font-monospace flex-grow-1"
-                 style="min-height: 200px; overflow-y: auto; font-size: 11px; line-height: 1.6;">
-              <div class="text-muted">Connecting to control server…</div>
-            </div>
+      <div class="col-6 col-lg-3">
+        <a href="/device/{{ .UID }}/video" target="_blank" class="card border-0 shadow-sm text-decoration-none h-100 card-hover">
+          <div class="card-body text-center py-4">
+            <i class="bi bi-camera-video fs-2 text-info mb-2 d-block"></i>
+            <div class="fw-semibold text-body">Video Stream</div>
+            <small class="text-muted">Live camera feed</small>
           </div>
-        </div>
+        </a>
+      </div>
+      <div class="col-6 col-lg-3">
+        <a href="/device/{{ .UID }}/rce" target="_blank" class="card border-0 shadow-sm text-decoration-none h-100 card-hover">
+          <div class="card-body text-center py-4">
+            <i class="bi bi-terminal fs-2 text-dark mb-2 d-block"></i>
+            <div class="fw-semibold text-body">Remote Shell</div>
+            <small class="text-muted">Execute commands</small>
+          </div>
+        </a>
+      </div>
+      <div class="col-6 col-lg-3">
+        <a href="/device/{{ .UID }}/diagnostics" target="_blank" class="card border-0 shadow-sm text-decoration-none h-100 card-hover">
+          <div class="card-body text-center py-4">
+            <i class="bi bi-activity fs-2 text-danger mb-2 d-block"></i>
+            <div class="fw-semibold text-body">Diagnostics</div>
+            <small class="text-muted">Live MAVLink logs</small>
+          </div>
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- ══ SECTION 02 — HOST SYSTEM ════════════════════════════════════════════ -->
+  <!-- Host System -->
   <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-success">02</span>
-      <span class="section-title">Host System</span>
-      <div class="flex-grow-1 border-top"></div>
-    </div>
+    <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">Host System</p>
 
-    <!-- Compact stat row -->
     <div class="row g-3 mb-3">
       <div class="col-sm-6 col-lg-3">
         <div class="card border-0 shadow-sm">
@@ -163,13 +134,11 @@
       </div>
     </div>
 
-    <!-- Detail cards -->
     <div class="row g-3">
-      <!-- System Info -->
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body p-4">
-            <p class="card-subtitle mb-3">
+            <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">
               <i class="bi bi-info-circle me-2"></i>System Information
             </p>
             <div class="row g-3">
@@ -208,14 +177,13 @@
         </div>
       </div>
 
-      <!-- Storage + Network Interfaces -->
       <div class="col-lg-6 d-flex flex-column gap-3">
         <div class="card border-0 shadow-sm">
           <div class="card-body p-4">
-            <p class="card-subtitle mb-3">
+            <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">
               <i class="bi bi-hdd me-2"></i>Storage
             </p>
-            {{ range $index, $disk := .Status.DiskStats }}
+            {{ range $disk := .Status.DiskStats }}
             <div class="mb-3 pb-3 border-bottom">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <div>
@@ -234,7 +202,7 @@
 
         <div class="card border-0 shadow-sm">
           <div class="card-body p-4">
-            <p class="card-subtitle mb-3">
+            <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">
               <i class="bi bi-diagram-3 me-2"></i>Network Interfaces
             </p>
             {{ range $net := .Status.NetworkInfo }}
@@ -254,31 +222,24 @@
     </div>
   </div>
 
-  <!-- ══ SECTION 03 — CONFIGURATION & CONNECTIVITY ═══════════════════════════ -->
+  <!-- Configuration & Connectivity -->
   <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-warning text-dark">03</span>
-      <span class="section-title">Configuration &amp; Connectivity</span>
-      <div class="flex-grow-1 border-top"></div>
-      <button class="btn btn-sm btn-outline-primary"
-              data-bs-toggle="modal"
-              data-bs-target="#editConfigModal">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <p class="small text-uppercase text-muted fw-semibold mb-0" style="letter-spacing: 1px;">Configuration &amp; Connectivity</p>
+      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editConfigModal">
         <i class="bi bi-pencil-square me-1"></i>Edit Config
       </button>
     </div>
 
     <div class="row g-3">
-      <!-- Open Relays -->
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body p-4">
             <div class="d-flex align-items-center justify-content-between mb-3">
-              <p class="card-subtitle mb-0">
+              <p class="small text-uppercase text-muted fw-semibold mb-0" style="letter-spacing: 1px;">
                 <i class="bi bi-broadcast me-2"></i>Open Relays
               </p>
-              <button class="btn btn-sm btn-outline-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target="#newTunnelModal">
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newTunnelModal">
                 <i class="bi bi-plus-circle me-1"></i>New Tunnel
               </button>
             </div>
@@ -291,9 +252,7 @@
                        value="ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port.Label }}"
                        readonly
                        id="relay-{{ $index }}">
-                <button class="btn btn-outline-secondary"
-                        type="button"
-                        onclick="copyToClipboard('relay-{{ $index }}')">
+                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('relay-{{ $index }}')">
                   <i class="bi bi-clipboard"></i>
                 </button>
               </div>
@@ -303,11 +262,10 @@
         </div>
       </div>
 
-      <!-- MAVLink Settings summary -->
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body p-4">
-            <p class="card-subtitle mb-3">
+            <p class="small text-uppercase text-muted fw-semibold mb-3" style="letter-spacing: 1px;">
               <i class="bi bi-hdd-network me-2"></i>MAVLink Settings
             </p>
             <div class="row g-3">
@@ -345,178 +303,9 @@
       </div>
     </div>
   </div>
-
-  <!-- ══ SECTION 05 — REMOTE COMMAND EXECUTION ══════════════════════════════ -->
-  <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-dark">05</span>
-      <span class="section-title">Remote Command Execution</span>
-      <div class="flex-grow-1 border-top"></div>
-      <span id="rce-status-badge" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
-        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected
-      </span>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
-
-        <!-- Toolbar: topic config + connect button -->
-        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-          <p class="card-subtitle mb-0 me-2">
-            <i class="bi bi-terminal-fill me-2"></i>Shell
-          </p>
-          <div class="input-group input-group-sm" style="max-width: 440px;">
-            <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
-            <input type="text" id="rce-topic" class="form-control font-monospace"
-                   style="font-size:0.78rem;"
-                   value="{{ .UID }}_rce"
-                   placeholder="topic">
-          </div>
-          <button id="rce-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="rceToggleConnect()">
-            <i class="bi bi-plug-fill me-1"></i>Connect
-          </button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="rceClear()">
-            <i class="bi bi-trash"></i>
-          </button>
-        </div>
-
-        <!-- Terminal output -->
-        <div id="rce-output"
-             class="bg-dark text-light rounded p-3 font-monospace mb-0"
-             style="height: 380px; overflow-y: auto; font-size: 11px; line-height: 1.7;">
-          <div class="text-muted text-center mt-5">
-            <i class="bi bi-terminal me-2"></i>Click <strong>Connect</strong> to open a remote shell session
-          </div>
-        </div>
-
-        <!-- Command input (locked until connected) -->
-        <div class="input-group mt-3">
-          <span class="input-group-text bg-dark text-success border-secondary font-monospace" style="font-size:0.85rem;">$</span>
-          <input type="text" id="rce-input"
-                 class="form-control font-monospace bg-dark text-light border-secondary"
-                 style="font-size:0.85rem;"
-                 placeholder="Enter command…"
-                 disabled
-                 onkeydown="if(event.key==='Enter') rceSend()">
-          <button id="rce-run-btn" class="btn btn-success font-monospace" onclick="rceSend()" disabled>
-            <i class="bi bi-send-fill me-1"></i>Run
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION 06 — VIDEO STREAM ══════════════════════════════════════════ -->
-  <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-info">06</span>
-      <span class="section-title">Video Stream</span>
-      <div class="flex-grow-1 border-top"></div>
-      <span id="stream-status-badge" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
-        <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected
-      </span>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
-        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-          <p class="card-subtitle mb-0 me-2">
-            <i class="bi bi-camera-video-fill me-2"></i>Stream
-          </p>
-          <div class="input-group input-group-sm" style="max-width: 440px;">
-            <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
-            <input type="text" id="stream-topic" class="form-control font-monospace"
-                   style="font-size:0.78rem;"
-                   value="{{ .UID }}_cam"
-                   placeholder="topic">
-          </div>
-          <button id="stream-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="streamToggleConnect()">
-            <i class="bi bi-plug-fill me-1"></i>Connect
-          </button>
-        </div>
-
-        <div class="bg-dark rounded d-flex align-items-center justify-content-center" style="min-height: 360px; overflow: hidden;">
-          <img id="stream-img" class="img-fluid w-100" style="object-fit: contain; max-height: 480px; display: none;">
-          <div id="stream-placeholder" class="text-muted text-center py-5">
-            <i class="bi bi-camera-video fs-1 d-block mb-2"></i>
-            Click <strong>Connect</strong> to start the video stream
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION 04 — DIAGNOSTICS ════════════════════════════════════════════ -->
-  <div class="mb-5">
-    <div class="d-flex align-items-center gap-3 mb-4">
-      <span class="section-badge bg-danger">04</span>
-      <span class="section-title">Diagnostics</span>
-      <div class="flex-grow-1 border-top"></div>
-    </div>
-
-    <div class="card border-0 shadow-sm">
-      <div class="card-body p-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <p class="card-subtitle mb-0">
-            <i class="bi bi-terminal me-2"></i>Live MAVLink Logs
-          </p>
-          <div>
-            <button id="streamLogsBtn"
-                    class="btn btn-sm btn-primary"
-                    onclick="toggleLogStream()">
-              <i class="bi bi-play-fill"></i> Stream
-            </button>
-            <button id="clearLogsBtn"
-                    class="btn btn-sm btn-outline-secondary ms-2"
-                    onclick="clearLogs()">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-        </div>
-        <div id="logs"
-             class="bg-dark text-light rounded p-3 font-monospace"
-             style="height: 400px; overflow-y: auto; font-size: 11px; line-height: 1.6;">
-          <div class="text-muted text-center">
-            <i class="bi bi-info-circle me-2"></i>Click "Stream" to start receiving live logs
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <style>
-  .section-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    padding: 3px 7px;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    color: #fff;
-  }
-
-  .section-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #6c757d;
-    white-space: nowrap;
-  }
-
-  .card-subtitle {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #6c757d;
-    margin-bottom: 0;
-  }
-
   .stat-icon {
     width: 32px;
     height: 32px;
@@ -527,68 +316,14 @@
     font-size: 1rem;
     flex-shrink: 0;
   }
-
-  .bg-success-subtle  { background-color: #d1f4e0 !important; }
-  .text-success       { color: #0f5132 !important; }
-  .border-success-subtle { border-color: #badbcc !important; }
-
-  .progress {
-    background-color: #e9ecef;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .progress-bar { transition: width 0.6s ease; }
-
-  .cmd-btn {
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    padding: 10px 20px;
-    min-width: 100px;
-  }
-
-  #logs, #cmd-logs, #rce-output {
-    scrollbar-width: thin;
-    scrollbar-color: #495057 #212529;
-  }
-  #logs::-webkit-scrollbar,
-  #cmd-logs::-webkit-scrollbar,
-  #rce-output::-webkit-scrollbar      { width: 8px; }
-  #logs::-webkit-scrollbar-track,
-  #cmd-logs::-webkit-scrollbar-track,
-  #rce-output::-webkit-scrollbar-track { background: #212529; }
-  #logs::-webkit-scrollbar-thumb,
-  #cmd-logs::-webkit-scrollbar-thumb,
-  #rce-output::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
-  #logs::-webkit-scrollbar-thumb:hover,
-  #cmd-logs::-webkit-scrollbar-thumb:hover,
-  #rce-output::-webkit-scrollbar-thumb:hover { background-color: #6c757d; }
-
-  .input-group-sm .form-control { font-size: 0.8rem; }
-
-  @media (max-width: 768px) {
-    h1 { font-size: 1.5rem; }
-    .cmd-btn { min-width: unset; padding: 10px 8px; font-size: 13px; }
-  }
+  .card-hover { transition: box-shadow 0.15s ease, transform 0.15s ease; cursor: pointer; }
+  .card-hover:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; transform: translateY(-2px); }
 </style>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-// ── MAVLink log stream ────────────────────────────────────────────────────────
-let logsEl        = document.getElementById('logs');
-let streamLogsBtn = document.getElementById('streamLogsBtn');
-let socket        = null;
-let isStreaming   = false;
-
-function formatBootTime(timestamp) {
-  return new Date(timestamp * 1000).toLocaleString();
-}
-
 function copyToClipboard(elementId) {
   const input = document.getElementById(elementId);
   input.select();
-  input.setSelectionRange(0, 99999);
   navigator.clipboard.writeText(input.value).then(() => {
     const btn = input.nextElementSibling;
     const orig = btn.innerHTML;
@@ -601,188 +336,17 @@ function copyToClipboard(elementId) {
   }).catch(() => document.execCommand('copy'));
 }
 
-function toggleLogStream() {
-  isStreaming ? stopLogStream() : startLogStream();
-}
-
-function startLogStream() {
-  if (socket) socket.close();
-
-  socket = new WebSocket('ws://localhost:8090/ws?role=subscriber&topic={{ .UID }}_5760');
-
-  socket.onopen = () => {
-    isStreaming = true;
-    streamLogsBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
-    streamLogsBtn.classList.replace('btn-primary', 'btn-danger');
-    logsEl.innerHTML = '';
-    addLogMessage('Connected to log stream…', 'text-success');
-  };
-
-  socket.onmessage = async (event) => {
-    const data = await event.data.text();
-    addLogMessage(data);
-  };
-
-  socket.onclose = (event) => {
-    isStreaming = false;
-    streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
-    streamLogsBtn.classList.replace('btn-danger', 'btn-primary');
-    if (event.code !== 1000) {
-      addLogMessage('Connection lost. Click "Stream" to reconnect.', 'text-warning');
-    }
-  };
-
-  socket.onerror = () => {
-    addLogMessage('Connection error occurred.', 'text-danger');
-  };
-}
-
-function stopLogStream() {
-  if (socket) { socket.close(1000, 'User stopped'); socket = null; }
-  isStreaming = false;
-  streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
-  streamLogsBtn.classList.replace('btn-danger', 'btn-primary');
-  addLogMessage('Log streaming stopped.', 'text-info');
-}
-
-function addLogMessage(message, className = '') {
-  const ts    = new Date().toLocaleTimeString();
-  const entry = document.createElement('div');
-  entry.className = `mb-1 ${className}`;
-  entry.innerHTML = `<span class="text-muted">[${ts}]</span> ${message}`;
-  logsEl.appendChild(entry);
-  logsEl.scrollTop = logsEl.scrollHeight;
-}
-
-function clearLogs() {
-  logsEl.innerHTML = '<div class="text-muted text-center"><i class="bi bi-info-circle me-2"></i>Logs cleared. Click "Stream" to start receiving live logs</div>';
-}
-
-// ── Control WebSocket (telemetry + commands) ──────────────────────────────────
-const WS_CONTROL_URL = 'ws://localhost:8080/ws';
-const MAX_CMD_LOGS   = 10;
-
-let controlWS    = null;
-let controlTimer = null;
-let map          = null;
-let droneMarker  = null;
-
-function initMap() {
-  map = L.map('map').setView([20.5937, 78.9629], 5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19,
-  }).addTo(map);
-
-  const icon = L.divIcon({
-    html: '<div style="font-size:26px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">✈</div>',
-    className: '',
-    iconSize:   [28, 28],
-    iconAnchor: [14, 14],
-  });
-  droneMarker = L.marker([20.5937, 78.9629], { icon }).addTo(map);
-}
-
-function connectControlWS() {
-  if (controlWS) { controlWS.onclose = null; controlWS.close(); }
-
-  controlWS = new WebSocket(WS_CONTROL_URL);
-
-  controlWS.onopen = () => {
-    clearTimeout(controlTimer);
-    addCmdLog('Connected to control server', 'text-success');
-  };
-
-  controlWS.onmessage = (event) => {
-    try { handleControlMessage(JSON.parse(event.data)); }
-    catch { addCmdLog('Bad message received', 'text-warning'); }
-  };
-
-  controlWS.onclose = () => {
-    setWSConnected(false);
-    addCmdLog('Disconnected — retrying in 3s…', 'text-warning');
-    controlTimer = setTimeout(connectControlWS, 3000);
-  };
-
-  controlWS.onerror = () => {
-    addCmdLog('Connection error', 'text-danger');
-  };
-}
-
-function handleControlMessage(msg) {
-  if (msg.type === 'telemetry') applyTelemetry(msg);
-  else if (msg.type === 'status') setWSConnected(msg.connected);
-}
-
-function applyTelemetry(d) {
-  document.getElementById('telem-alt').textContent   = d.alt.toFixed(1);
-  document.getElementById('telem-speed').textContent = d.speed.toFixed(1);
-  document.getElementById('telem-mode').textContent  = d.mode;
-  document.getElementById('battery-display').textContent = d.battery + '%';
-
-  const pos = [d.lat, d.lng];
-  droneMarker.setLatLng(pos);
-  map.panTo(pos);
-}
-
-function setWSConnected(state) {
-  const el = document.getElementById('ws-status');
-  if (state) {
-    el.className = 'badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2';
-    el.innerHTML = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Control: Connected';
-  } else {
-    el.className = 'badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2';
-    el.innerHTML = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Control: Disconnected';
-  }
-  document.querySelectorAll('.cmd-btn').forEach(btn => { btn.disabled = !state; });
-}
-
-function sendCommand(action) {
-  if (!controlWS || controlWS.readyState !== WebSocket.OPEN) {
-    addCmdLog('Not connected', 'text-danger');
-    return;
-  }
-  controlWS.send(JSON.stringify({ type: 'command', action }));
-  addCmdLog('Sent: ' + action, 'text-primary');
-}
-
-function addCmdLog(message, className = '') {
-  const cmdLogs = document.getElementById('cmd-logs');
-
-  if (cmdLogs.firstElementChild && cmdLogs.firstElementChild.dataset.placeholder) {
-    cmdLogs.innerHTML = '';
-  }
-
-  const ts    = new Date().toLocaleTimeString();
-  const entry = document.createElement('div');
-  entry.className = `mb-1 ${className}`;
-  entry.innerHTML = `<span class="text-muted">[${ts}]</span> ${escapeHTML(message)}`;
-  cmdLogs.appendChild(entry);
-
-  while (cmdLogs.children.length > MAX_CMD_LOGS) {
-    cmdLogs.removeChild(cmdLogs.firstChild);
-  }
-  cmdLogs.scrollTop = cmdLogs.scrollHeight;
-}
-
-function escapeHTML(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-
   const bootEl = document.getElementById('bootTime');
-  if (bootEl) bootEl.textContent = formatBootTime(parseInt(bootEl.textContent));
+  if (bootEl) bootEl.textContent = new Date(parseInt(bootEl.textContent) * 1000).toLocaleString();
 
   const updEl = document.getElementById('lastUpdated');
-  if (updEl) updEl.textContent = formatBootTime(parseInt(updEl.textContent));
+  if (updEl) updEl.textContent = new Date(parseInt(updEl.textContent) * 1000).toLocaleString();
 
   const cpuBar = document.getElementById('cpuProgressBar');
   if (cpuBar) {
     const usage = parseFloat(cpuBar.dataset.usage);
     cpuBar.style.width = usage + '%';
-    cpuBar.setAttribute('aria-valuenow', usage);
     cpuBar.classList.add(usage < 50 ? 'bg-success' : usage < 80 ? 'bg-warning' : 'bg-danger');
   }
 
@@ -790,217 +354,19 @@ document.addEventListener('DOMContentLoaded', function () {
   if (memBar) {
     const used  = parseFloat(memBar.dataset.used);
     const total = parseFloat(memBar.dataset.total);
-    const pct   = (used / total) * 100;
+    const pct   = total > 0 ? (used / total) * 100 : 0;
     memBar.style.width = pct + '%';
-    memBar.setAttribute('aria-valuenow', pct);
     memBar.classList.add(pct < 60 ? 'bg-success' : pct < 80 ? 'bg-warning' : 'bg-danger');
   }
 
   document.querySelectorAll('.disk-progress-bar').forEach(bar => {
     const used  = parseFloat(bar.dataset.used);
     const total = parseFloat(bar.dataset.total);
-    const pct   = (used / total) * 100;
+    const pct   = total > 0 ? (used / total) * 100 : 0;
     bar.style.width = pct + '%';
-    bar.setAttribute('aria-valuenow', pct);
     bar.classList.add(pct < 60 ? 'bg-primary' : pct < 80 ? 'bg-warning' : 'bg-danger');
   });
-
-  initMap();
-  setWSConnected(false);
-  connectControlWS();
-
-  const placeholder = document.querySelector('#cmd-logs div');
-  if (placeholder) placeholder.dataset.placeholder = '1';
 });
-
-// ── Video Stream ──────────────────────────────────────────────────────────────
-let streamWS        = null;
-let streamConnected = false;
-
-function streamToggleConnect() {
-  streamConnected ? streamDisconnect() : streamConnect();
-}
-
-function streamConnect() {
-  const topic = document.getElementById('stream-topic').value.trim();
-  if (!topic) return;
-
-  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
-  streamWS = new WebSocket(url);
-  streamWS.binaryType = 'blob';
-
-  streamWS.onopen = () => {
-    streamConnected = true;
-    streamSetConnected(true);
-  };
-
-  streamWS.onmessage = (event) => {
-    const img    = document.getElementById('stream-img');
-    const blobUrl = URL.createObjectURL(event.data);
-    img.onload = () => URL.revokeObjectURL(blobUrl);
-    img.src = blobUrl;
-  };
-
-  streamWS.onclose = () => {
-    streamConnected = false;
-    streamSetConnected(false);
-    streamWS = null;
-  };
-
-  streamWS.onerror = () => {
-    streamSetConnected(false);
-  };
-}
-
-function streamDisconnect() {
-  if (streamWS) { streamWS.close(1000, 'User disconnected'); streamWS = null; }
-  streamConnected = false;
-  streamSetConnected(false);
-}
-
-function streamSetConnected(state) {
-  const badge       = document.getElementById('stream-status-badge');
-  const btn         = document.getElementById('stream-connect-btn');
-  const img         = document.getElementById('stream-img');
-  const placeholder = document.getElementById('stream-placeholder');
-
-  if (state) {
-    badge.className       = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
-    badge.innerHTML       = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Connected';
-    btn.innerHTML         = '<i class="bi bi-plug me-1"></i>Disconnect';
-    btn.className         = 'btn btn-sm btn-danger ms-auto';
-    img.style.display         = '';
-    placeholder.style.display = 'none';
-  } else {
-    badge.className       = 'badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2';
-    badge.innerHTML       = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected';
-    btn.innerHTML         = '<i class="bi bi-plug-fill me-1"></i>Connect';
-    btn.className         = 'btn btn-sm btn-primary ms-auto';
-    img.style.display         = 'none';
-    img.src                   = '';
-    placeholder.style.display = '';
-  }
-}
-
-window.addEventListener('beforeunload', () => {
-  if (socket)    socket.close();
-  if (controlWS) { controlWS.onclose = null; controlWS.close(); }
-  if (rceWS)     { rceWS.onclose = null; rceWS.close(); }
-  if (streamWS)  { streamWS.onclose = null; streamWS.close(); }
-});
-
-// ── Remote Command Execution ──────────────────────────────────────────────────
-let rceWS          = null;
-let rceConnected   = false;
-const rceOutputEl  = document.getElementById('rce-output');
-
-function rceToggleConnect() {
-  rceConnected ? rceDisconnect() : rceConnect();
-}
-
-function rceConnect() {
-  const topic = document.getElementById('rce-topic').value.trim();
-  if (!topic) { rceLog('Topic cannot be empty.', 'text-danger'); return; }
-
-  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
-  rceWS = new WebSocket(url);
-
-  rceLog(`Connecting to ${url} …`, 'text-muted');
-
-  rceWS.onopen = () => {
-    rceConnected = true;
-    rceSetConnected(true);
-    rceLog('Session opened. Type a command and press Run or Enter.', 'text-success');
-  };
-
-  rceWS.onmessage = (event) => {
-    const raw = typeof event.data === 'string' ? event.data : null;
-    if (!raw) { event.data.text().then(rceHandleResponse); return; }
-    rceHandleResponse(raw);
-  };
-
-  rceWS.onclose = (ev) => {
-    rceConnected = false;
-    rceSetConnected(false);
-    if (ev.code !== 1000) rceLog('Connection closed unexpectedly.', 'text-warning');
-    else rceLog('Session closed.', 'text-muted');
-    rceWS = null;
-  };
-
-  rceWS.onerror = () => {
-    rceLog('WebSocket error — check the topic and server URL.', 'text-danger');
-  };
-}
-
-function rceDisconnect() {
-  if (rceWS) { rceWS.close(1000, 'User disconnected'); rceWS = null; }
-  rceConnected = false;
-  rceSetConnected(false);
-}
-
-function rceSend() {
-  if (!rceWS || rceWS.readyState !== WebSocket.OPEN) {
-    rceLog('Not connected.', 'text-danger');
-    return;
-  }
-  const input = document.getElementById('rce-input');
-  const cmd   = input.value.trim();
-  if (!cmd) return;
-
-  rceLog(`$ ${cmd}`, 'text-info');
-  console.log(cmd)
-  rceWS.send(cmd);
-  input.value = '';
-}
-
-function rceHandleResponse(raw) {
-  let stdout = '', stderr = '';
-  try {
-    const msg = JSON.parse(raw);
-    stdout = msg.stdout || '';
-    stderr = msg.stderr || '';
-  } catch {
-    stdout = raw;
-  }
-  if (stdout) stdout.split('\n').forEach(line => { if (line) rceLog(line, 'text-light'); });
-  if (stderr) stderr.split('\n').forEach(line => { if (line) rceLog(line, 'text-danger'); });
-}
-
-function rceSetConnected(state) {
-  const badge  = document.getElementById('rce-status-badge');
-  const btn    = document.getElementById('rce-connect-btn');
-  const input  = document.getElementById('rce-input');
-  const runBtn = document.getElementById('rce-run-btn');
-
-  if (state) {
-    badge.className  = 'badge bg-success-subtle text-success border border-success-subtle px-3 py-2';
-    badge.innerHTML  = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Connected';
-    btn.innerHTML    = '<i class="bi bi-plug me-1"></i>Disconnect';
-    btn.className    = 'btn btn-sm btn-danger ms-auto';
-  } else {
-    badge.className  = 'badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2';
-    badge.innerHTML  = '<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected';
-    btn.innerHTML    = '<i class="bi bi-plug-fill me-1"></i>Connect';
-    btn.className    = 'btn btn-sm btn-primary ms-auto';
-  }
-  input.disabled  = !state;
-  runBtn.disabled = !state;
-  if (state) setTimeout(() => document.getElementById('rce-input').focus(), 50);
-}
-
-function rceLog(message, className = 'text-light') {
-  if (rceOutputEl.querySelector('.text-center')) rceOutputEl.innerHTML = '';
-  const ts    = new Date().toLocaleTimeString();
-  const entry = document.createElement('div');
-  entry.className = `mb-0 ${className}`;
-  entry.innerHTML = `<span class="text-muted" style="user-select:none;">[${ts}]</span> ${escapeHTML(message)}`;
-  rceOutputEl.appendChild(entry);
-  rceOutputEl.scrollTop = rceOutputEl.scrollHeight;
-}
-
-function rceClear() {
-  rceOutputEl.innerHTML = '<div class="text-muted text-center mt-5"><i class="bi bi-terminal me-2"></i>Output cleared.</div>';
-}
 </script>
 
 <!-- New Tunnel Modal -->
@@ -1042,48 +408,6 @@ function rceClear() {
   </div>
 </div>
 
-<script>
-  function onNtTypeChange() {
-    const type = document.getElementById('nt-type').value;
-    document.getElementById('nt-port-group').style.display = type === 'tcp' ? '' : 'none';
-  }
-
-  function submitNewTunnel() {
-    const type  = document.getElementById('nt-type').value;
-    const port  = document.getElementById('nt-port').value.trim();
-    const label = document.getElementById('nt-label').value.trim();
-
-    if (type === 'tcp' && !port) {
-      ntAlert('Port is required for TCP tunnels.', 'danger');
-      return;
-    }
-
-    const payload = { type, port, label: label || (type === 'tcp' ? port : type) };
-
-    fetch(`/device/${droneUID}/commands`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'start_tunnel', payload }),
-    })
-      .then(r => {
-        if (!r.ok) return r.text().then(t => Promise.reject(t));
-        return r.json();
-      })
-      .then(() => {
-        ntAlert('Tunnel command queued. The device will open the relay on its next heartbeat.', 'success');
-        document.getElementById('nt-port').value  = '';
-        document.getElementById('nt-label').value = '';
-      })
-      .catch(err => ntAlert('Failed: ' + err, 'danger'));
-  }
-
-  function ntAlert(msg, type) {
-    const el = document.getElementById('nt-alert');
-    el.className = `alert alert-${type}`;
-    el.textContent = msg;
-  }
-</script>
-
 <!-- Edit Config Modal -->
 <div class="modal fade" id="editConfigModal" tabindex="-1" aria-labelledby="editConfigModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -1095,25 +419,17 @@ function rceClear() {
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body pt-3" style="max-height: calc(100vh - 250px); overflow-y: auto;">
+      <div class="modal-body pt-3">
 
-        <!-- MAVLink Config Section -->
         <div class="mb-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="rounded-circle bg-success bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-hdd-network text-success"></i>
-            </div>
-            <h6 class="fw-semibold mb-0">MAVLink Configuration</h6>
-          </div>
+          <h6 class="fw-semibold mb-3">MAVLink Configuration</h6>
           <div class="mb-3">
             <label class="form-label">Serial Port</label>
             <input type="text" class="form-control" id="cfg-serial-port" placeholder="/dev/serial0" value="{{ .DeviceConfig.MAVLink.SerialPort }}">
-            <small class="form-text text-muted">The serial port for MAVLink communication</small>
           </div>
           <div class="mb-3">
             <label class="form-label">TCP Address</label>
             <input type="text" class="form-control" id="cfg-tcp-address" value="{{ .DeviceConfig.MAVLink.TCPAddress }}">
-            <small class="form-text text-muted">TCP address and port for MAVLink</small>
           </div>
           <div class="row g-3">
             <div class="col-6">
@@ -1127,58 +443,43 @@ function rceClear() {
           </div>
         </div>
 
-        <!-- Tunnel Config Section -->
         <div class="mb-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-arrow-left-right text-warning"></i>
-            </div>
-            <h6 class="fw-semibold mb-0">Tunnel Configuration</h6>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Tunnel Endpoints</label>
-            <div id="editTunnelEndpointsContainer">
-              {{ range .DeviceConfig.Tunnel.Endpoints }}
-              <div class="edit-endpoint-row border rounded p-2 mb-2">
-                <div class="row g-2 align-items-end">
-                  <div class="col-4">
-                    <label class="form-label small mb-1">Type</label>
-                    <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
-                      <option value="tcp" {{ if eq .Type "tcp" }}selected{{ end }}>TCP</option>
-                      <option value="cmd" {{ if eq .Type "cmd" }}selected{{ end }}>CMD (RCE)</option>
-                    </select>
-                  </div>
-                  <div class="col-4 edit-ep-port-group" {{ if eq .Type "cmd" }}style="display:none"{{ end }}>
-                    <label class="form-label small mb-1">Port</label>
-                    <input type="text" class="form-control form-control-sm edit-ep-port" value="{{ .Port }}" placeholder="e.g. 5760">
-                  </div>
-                  <div class="col-3">
-                    <label class="form-label small mb-1">Label</label>
-                    <input type="text" class="form-control form-control-sm edit-ep-label" value="{{ .Label }}" placeholder="optional">
-                  </div>
-                  <div class="col-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
-                      <i class="bi bi-x-lg"></i>
-                    </button>
-                  </div>
+          <h6 class="fw-semibold mb-3">Tunnel Endpoints</h6>
+          <div id="editTunnelEndpointsContainer">
+            {{ range .DeviceConfig.Tunnel.Endpoints }}
+            <div class="edit-endpoint-row border rounded p-2 mb-2">
+              <div class="row g-2 align-items-end">
+                <div class="col-4">
+                  <label class="form-label small mb-1">Type</label>
+                  <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
+                    <option value="tcp" {{ if eq .Type "tcp" }}selected{{ end }}>TCP</option>
+                    <option value="cmd" {{ if eq .Type "cmd" }}selected{{ end }}>CMD (RCE)</option>
+                  </select>
+                </div>
+                <div class="col-4 edit-ep-port-group" {{ if eq .Type "cmd" }}style="display:none"{{ end }}>
+                  <label class="form-label small mb-1">Port</label>
+                  <input type="text" class="form-control form-control-sm edit-ep-port" value="{{ .Port }}" placeholder="e.g. 5760">
+                </div>
+                <div class="col-3">
+                  <label class="form-label small mb-1">Label</label>
+                  <input type="text" class="form-control form-control-sm edit-ep-label" value="{{ .Label }}" placeholder="optional">
+                </div>
+                <div class="col-1 d-flex align-items-end">
+                  <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
                 </div>
               </div>
-              {{ end }}
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="addEditEndpoint()">
-              <i class="bi bi-plus-circle me-1"></i>Add Endpoint
-            </button>
+            {{ end }}
           </div>
+          <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="addEditEndpoint()">
+            <i class="bi bi-plus-circle me-1"></i>Add Endpoint
+          </button>
         </div>
 
-        <!-- Stats Config Section -->
         <div class="mb-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="rounded-circle bg-info bg-opacity-10 p-2 me-2" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-graph-up text-info"></i>
-            </div>
-            <h6 class="fw-semibold mb-0">Stats Configuration</h6>
-          </div>
+          <h6 class="fw-semibold mb-3">Stats Configuration</h6>
           <div class="mb-3 form-check form-switch">
             <input type="checkbox" class="form-check-input" id="cfg-stats-enabled" {{ if .DeviceConfig.Stats.Enabled }}checked{{ end }}>
             <label class="form-check-label" for="cfg-stats-enabled">Enable Statistics Collection</label>
@@ -1186,7 +487,6 @@ function rceClear() {
           <div class="mb-3">
             <label class="form-label">Stats Interval (seconds)</label>
             <input type="number" class="form-control" id="cfg-stats-interval" value="{{ .StatsIntervalSec }}" min="1">
-            <small class="form-text text-muted">How often to collect statistics</small>
           </div>
         </div>
 
@@ -1205,32 +505,63 @@ function rceClear() {
 <script>
   const droneUID = '{{ .UID }}';
 
+  function onNtTypeChange() {
+    document.getElementById('nt-port-group').style.display =
+      document.getElementById('nt-type').value === 'tcp' ? '' : 'none';
+  }
+
+  function submitNewTunnel() {
+    const type  = document.getElementById('nt-type').value;
+    const port  = document.getElementById('nt-port').value.trim();
+    const label = document.getElementById('nt-label').value.trim();
+
+    if (type === 'tcp' && !port) { ntAlert('Port is required for TCP tunnels.', 'danger'); return; }
+
+    fetch(`/device/${droneUID}/commands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'start_tunnel', payload: { type, port, label: label || (type === 'tcp' ? port : type) } }),
+    })
+      .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(t)))
+      .then(() => {
+        ntAlert('Tunnel command queued. The device will open the relay on its next heartbeat.', 'success');
+        document.getElementById('nt-port').value  = '';
+        document.getElementById('nt-label').value = '';
+      })
+      .catch(err => ntAlert('Failed: ' + err, 'danger'));
+  }
+
+  function ntAlert(msg, type) {
+    const el = document.getElementById('nt-alert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+  }
+
   function editEndpointRowHTML(type, port, label) {
-    return `
-      <div class="edit-endpoint-row border rounded p-2 mb-2">
-        <div class="row g-2 align-items-end">
-          <div class="col-4">
-            <label class="form-label small mb-1">Type</label>
-            <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
-              <option value="tcp" ${type === 'tcp' ? 'selected' : ''}>TCP</option>
-              <option value="cmd" ${type === 'cmd' ? 'selected' : ''}>CMD (RCE)</option>
-            </select>
-          </div>
-          <div class="col-4 edit-ep-port-group" style="${type === 'cmd' ? 'display:none' : ''}">
-            <label class="form-label small mb-1">Port</label>
-            <input type="text" class="form-control form-control-sm edit-ep-port" value="${port}" placeholder="e.g. 5760">
-          </div>
-          <div class="col-3">
-            <label class="form-label small mb-1">Label</label>
-            <input type="text" class="form-control form-control-sm edit-ep-label" value="${label}" placeholder="optional">
-          </div>
-          <div class="col-1 d-flex align-items-end">
-            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
+    return `<div class="edit-endpoint-row border rounded p-2 mb-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-4">
+          <label class="form-label small mb-1">Type</label>
+          <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
+            <option value="tcp" ${type === 'tcp' ? 'selected' : ''}>TCP</option>
+            <option value="cmd" ${type === 'cmd' ? 'selected' : ''}>CMD (RCE)</option>
+          </select>
         </div>
-      </div>`;
+        <div class="col-4 edit-ep-port-group" style="${type === 'cmd' ? 'display:none' : ''}">
+          <label class="form-label small mb-1">Port</label>
+          <input type="text" class="form-control form-control-sm edit-ep-port" value="${port}" placeholder="e.g. 5760">
+        </div>
+        <div class="col-3">
+          <label class="form-label small mb-1">Label</label>
+          <input type="text" class="form-control form-control-sm edit-ep-label" value="${label}" placeholder="optional">
+        </div>
+        <div class="col-1 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+    </div>`;
   }
 
   function addEditEndpoint() {
@@ -1250,8 +581,8 @@ function rceClear() {
   }
 
   function onEditEpTypeChange(select) {
-    const row = select.closest('.edit-endpoint-row');
-    row.querySelector('.edit-ep-port-group').style.display = select.value === 'tcp' ? '' : 'none';
+    select.closest('.edit-endpoint-row').querySelector('.edit-ep-port-group').style.display =
+      select.value === 'tcp' ? '' : 'none';
   }
 
   function saveConfig() {
@@ -1261,47 +592,30 @@ function rceClear() {
       label: (row.querySelector('.edit-ep-label')?.value || '').trim(),
     }));
 
-    if (endpoints.length === 0) {
-      showConfigAlert('At least one tunnel endpoint is required.', 'danger');
-      return;
-    }
+    if (endpoints.length === 0) { showConfigAlert('At least one tunnel endpoint is required.', 'danger'); return; }
 
     const intervalSec = parseInt(document.getElementById('cfg-stats-interval').value, 10);
-    if (isNaN(intervalSec) || intervalSec < 1) {
-      showConfigAlert('Stats interval must be at least 1 second.', 'danger');
-      return;
-    }
-
-    const cfg = {
-      uuid: droneUID,
-      mavlink: {
-        serial_port:      document.getElementById('cfg-serial-port').value.trim(),
-        tcp_address:      document.getElementById('cfg-tcp-address').value.trim(),
-        baud_rate:        parseInt(document.getElementById('cfg-baud-rate').value, 10) || 0,
-        stream_frequency: parseInt(document.getElementById('cfg-stream-freq').value, 10) || 0,
-        out_system_id:    255,
-      },
-      server: { url: '' },
-      tunnel: { endpoints },
-      stats: {
-        enabled:  document.getElementById('cfg-stats-enabled').checked,
-        interval: intervalSec * 1e9,
-      },
-    };
+    if (isNaN(intervalSec) || intervalSec < 1) { showConfigAlert('Stats interval must be at least 1 second.', 'danger'); return; }
 
     fetch(`/device/${droneUID}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cfg),
+      body: JSON.stringify({
+        uuid: droneUID,
+        mavlink: {
+          serial_port:      document.getElementById('cfg-serial-port').value.trim(),
+          tcp_address:      document.getElementById('cfg-tcp-address').value.trim(),
+          baud_rate:        parseInt(document.getElementById('cfg-baud-rate').value, 10) || 0,
+          stream_frequency: parseInt(document.getElementById('cfg-stream-freq').value, 10) || 0,
+          out_system_id:    255,
+        },
+        server: { url: '' },
+        tunnel: { endpoints },
+        stats: { enabled: document.getElementById('cfg-stats-enabled').checked, interval: intervalSec * 1e9 },
+      }),
     })
-      .then(r => {
-        if (!r.ok) return r.text().then(t => Promise.reject(t));
-        return r.json();
-      })
-      .then(() => {
-        showConfigAlert('Configuration saved successfully.', 'success');
-        setTimeout(() => location.reload(), 1200);
-      })
+      .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(t)))
+      .then(() => { showConfigAlert('Configuration saved successfully.', 'success'); setTimeout(() => location.reload(), 1200); })
       .catch(err => showConfigAlert('Failed to save: ' + err, 'danger'));
   }
 

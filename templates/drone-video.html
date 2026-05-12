@@ -1,0 +1,110 @@
+{{ define "content" }}
+<div class="container-fluid mt-4 mb-5 px-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/device/{{ .UID }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <span class="fw-semibold fs-5">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</span>
+      <span class="text-muted small ms-2">&middot; Video Stream</span>
+    </div>
+    <span id="stream-status-badge" class="ms-auto badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2">
+      <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Disconnected
+    </span>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <!-- Topic + Connect -->
+      <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <div class="input-group input-group-sm" style="max-width: 480px;">
+          <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
+          <input type="text" id="stream-topic" class="form-control font-monospace"
+                 style="font-size:0.78rem;"
+                 value="{{ .UID }}_cam"
+                 placeholder="topic">
+        </div>
+        <button id="stream-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="streamToggleConnect()">
+          <i class="bi bi-plug-fill me-1"></i>Connect
+        </button>
+      </div>
+
+      <!-- Video -->
+      <div class="bg-dark rounded d-flex align-items-center justify-content-center" style="height: calc(100vh - 310px); min-height: 320px; overflow: hidden;">
+        <img id="stream-img" class="img-fluid w-100" style="object-fit: contain; max-height: 100%; display: none;" alt="Live stream">
+        <div id="stream-placeholder" class="text-muted text-center py-5">
+          <i class="bi bi-camera-video fs-1 d-block mb-2"></i>
+          Click <strong>Connect</strong> to start the video stream
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let streamWS        = null;
+let streamConnected = false;
+
+function streamToggleConnect() {
+  streamConnected ? streamDisconnect() : streamConnect();
+}
+
+function streamConnect() {
+  const topic = document.getElementById('stream-topic').value.trim();
+  if (!topic) return;
+
+  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+  streamWS = new WebSocket(url);
+  streamWS.binaryType = 'blob';
+
+  streamWS.onopen = () => {
+    streamConnected = true;
+    streamSetConnected(true);
+  };
+
+  streamWS.onmessage = (event) => {
+    const img    = document.getElementById('stream-img');
+    const blobUrl = URL.createObjectURL(event.data);
+    img.onload = () => URL.revokeObjectURL(blobUrl);
+    img.src = blobUrl;
+  };
+
+  streamWS.onclose = () => {
+    streamConnected = false;
+    streamSetConnected(false);
+    streamWS = null;
+  };
+
+  streamWS.onerror = () => streamSetConnected(false);
+}
+
+function streamDisconnect() {
+  if (streamWS) { streamWS.close(1000, 'User disconnected'); streamWS = null; }
+  streamConnected = false;
+  streamSetConnected(false);
+}
+
+function streamSetConnected(state) {
+  const badge       = document.getElementById('stream-status-badge');
+  const btn         = document.getElementById('stream-connect-btn');
+  const img         = document.getElementById('stream-img');
+  const placeholder = document.getElementById('stream-placeholder');
+
+  badge.className = state
+    ? 'ms-auto badge bg-success-subtle text-success border border-success-subtle px-3 py-2'
+    : 'ms-auto badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2';
+  badge.innerHTML = `<i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> ${state ? 'Connected' : 'Disconnected'}`;
+  btn.innerHTML   = state ? '<i class="bi bi-plug me-1"></i>Disconnect' : '<i class="bi bi-plug-fill me-1"></i>Connect';
+  btn.className   = state ? 'btn btn-sm btn-danger ms-auto' : 'btn btn-sm btn-primary ms-auto';
+  img.style.display         = state ? '' : 'none';
+  placeholder.style.display = state ? 'none' : '';
+  if (!state) { img.src = ''; }
+}
+
+window.addEventListener('beforeunload', () => {
+  if (streamWS) { streamWS.onclose = null; streamWS.close(); }
+});
+</script>
+{{ end }}

@@ -1,0 +1,122 @@
+{{ define "content" }}
+<div class="container-fluid mt-4 mb-5 px-4">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="/device/{{ .UID }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <span class="fw-semibold fs-5">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</span>
+      <span class="text-muted small ms-2">&middot; Diagnostics</span>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="small text-uppercase text-muted fw-semibold mb-0" style="letter-spacing: 1px;">
+          <i class="bi bi-terminal me-2"></i>Live MAVLink Logs
+        </p>
+        <div class="d-flex gap-2">
+          <div class="input-group input-group-sm" style="max-width: 260px;">
+            <span class="input-group-text font-monospace text-muted" style="font-size:0.75rem;">topic=</span>
+            <input type="text" id="log-topic" class="form-control font-monospace"
+                   style="font-size:0.75rem;"
+                   value="{{ .UID }}_5760"
+                   placeholder="topic">
+          </div>
+          <button id="streamLogsBtn" class="btn btn-sm btn-primary" onclick="toggleLogStream()">
+            <i class="bi bi-play-fill"></i> Stream
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="clearLogs()">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="logs"
+           class="bg-dark text-light rounded p-3 font-monospace"
+           style="height: calc(100vh - 280px); min-height: 320px; overflow-y: auto; font-size: 11px; line-height: 1.6;">
+        <div class="text-muted text-center">
+          <i class="bi bi-info-circle me-2"></i>Click "Stream" to start receiving live logs
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #logs { scrollbar-width: thin; scrollbar-color: #495057 #212529; }
+  #logs::-webkit-scrollbar { width: 8px; }
+  #logs::-webkit-scrollbar-track { background: #212529; }
+  #logs::-webkit-scrollbar-thumb { background-color: #495057; border-radius: 4px; }
+</style>
+
+<script>
+const logsEl        = document.getElementById('logs');
+const streamLogsBtn = document.getElementById('streamLogsBtn');
+let logSocket       = null;
+let isStreaming     = false;
+
+function toggleLogStream() {
+  isStreaming ? stopLogStream() : startLogStream();
+}
+
+function startLogStream() {
+  if (logSocket) logSocket.close();
+  const topic = document.getElementById('log-topic').value.trim();
+  const url   = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+
+  logSocket = new WebSocket(url);
+
+  logSocket.onopen = () => {
+    isStreaming = true;
+    streamLogsBtn.innerHTML = '<i class="bi bi-stop-fill"></i> Stop';
+    streamLogsBtn.classList.replace('btn-primary', 'btn-danger');
+    logsEl.innerHTML = '';
+    addLogMessage('Connected to log stream…', 'text-success');
+  };
+
+  logSocket.onmessage = async (event) => {
+    const data = event.data instanceof Blob ? await event.data.text() : event.data;
+    addLogMessage(data);
+  };
+
+  logSocket.onclose = (event) => {
+    isStreaming = false;
+    streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
+    streamLogsBtn.classList.replace('btn-danger', 'btn-primary');
+    if (event.code !== 1000) addLogMessage('Connection lost. Click "Stream" to reconnect.', 'text-warning');
+  };
+
+  logSocket.onerror = () => addLogMessage('Connection error occurred.', 'text-danger');
+}
+
+function stopLogStream() {
+  if (logSocket) { logSocket.close(1000, 'User stopped'); logSocket = null; }
+  isStreaming = false;
+  streamLogsBtn.innerHTML = '<i class="bi bi-play-fill"></i> Stream';
+  streamLogsBtn.classList.replace('btn-danger', 'btn-primary');
+  addLogMessage('Log streaming stopped.', 'text-info');
+}
+
+function addLogMessage(message, className = '') {
+  if (logsEl.querySelector('.text-center')) logsEl.innerHTML = '';
+  const ts    = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = `mb-1 ${className}`;
+  entry.innerHTML = `<span class="text-muted">[${ts}]</span> ${message}`;
+  logsEl.appendChild(entry);
+  logsEl.scrollTop = logsEl.scrollHeight;
+}
+
+function clearLogs() {
+  logsEl.innerHTML = '<div class="text-muted text-center"><i class="bi bi-info-circle me-2"></i>Logs cleared. Click "Stream" to start receiving live logs.</div>';
+}
+
+window.addEventListener('beforeunload', () => {
+  if (logSocket) { logSocket.onclose = null; logSocket.close(); }
+});
+</script>
+{{ end }}

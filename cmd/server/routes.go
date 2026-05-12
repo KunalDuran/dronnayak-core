@@ -28,8 +28,12 @@ func initTemplates() {
 		"signup":        template.Must(template.ParseFiles("templates/signup.html")),
 		"fleets":        template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
 		"drones":        template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
-		"drone-details": template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
-		"log-viewer":    template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")),
+		"drone-details":    template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
+		"drone-flight-deck": template.Must(template.ParseFiles("templates/base.html", "templates/drone-flight-deck.html")),
+		"drone-rce":         template.Must(template.ParseFiles("templates/base.html", "templates/drone-rce.html")),
+		"drone-video":       template.Must(template.ParseFiles("templates/base.html", "templates/drone-video.html")),
+		"drone-diagnostics": template.Must(template.ParseFiles("templates/base.html", "templates/drone-diagnostics.html")),
+		"log-viewer":        template.Must(template.ParseFiles("templates/base.html", "templates/log-viewer.html")),
 	}
 }
 
@@ -207,6 +211,30 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, "drone-details", view)
+}
+
+func deviceSubPage(tmplName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		droneID := chi.URLParam(r, "drone_id")
+		if droneID == "" {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+		var drone data.Drone
+		if err := data.FindOne("drone", map[string]interface{}{"uid": droneID}, &drone); err != nil {
+			http.Redirect(w, r, "/fleets", http.StatusFound)
+			return
+		}
+		drone.DeviceConfig.Server.URL = web.CleanServerURL(getServerPath(r))
+		view := struct {
+			data.Drone
+			StatsIntervalSec int64
+		}{
+			Drone:            drone,
+			StatsIntervalSec: int64(drone.DeviceConfig.Stats.Interval / time.Second),
+		}
+		renderTemplate(w, tmplName, view)
+	}
 }
 
 // createDrone handles POST request to create a new drone with configuration
