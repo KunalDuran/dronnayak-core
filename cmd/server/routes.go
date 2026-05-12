@@ -23,12 +23,12 @@ var (
 
 func initTemplates() {
 	tmpl = map[string]*template.Template{
-		"index":         template.Must(template.ParseFiles("templates/base.html", "templates/index.html")),
-		"login":         template.Must(template.ParseFiles("templates/login.html")),
-		"signup":        template.Must(template.ParseFiles("templates/signup.html")),
-		"fleets":        template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
-		"drones":        template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
-		"drone-details":    template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
+		"index":             template.Must(template.ParseFiles("templates/base.html", "templates/index.html")),
+		"login":             template.Must(template.ParseFiles("templates/login.html")),
+		"signup":            template.Must(template.ParseFiles("templates/signup.html")),
+		"fleets":            template.Must(template.ParseFiles("templates/base.html", "templates/fleets.html")),
+		"drones":            template.Must(template.ParseFiles("templates/base.html", "templates/drones.html")),
+		"drone-details":     template.Must(template.ParseFiles("templates/base.html", "templates/drone-details.html")),
 		"drone-flight-deck": template.Must(template.ParseFiles("templates/base.html", "templates/drone-flight-deck.html")),
 		"drone-rce":         template.Must(template.ParseFiles("templates/base.html", "templates/drone-rce.html")),
 		"drone-video":       template.Must(template.ParseFiles("templates/base.html", "templates/drone-video.html")),
@@ -206,10 +206,34 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 		data.Drone
 		StatsIntervalSec int64
 		WSRelayBase      string
+		LiveTunnelTopics []string
 	}{
 		Drone:            drone,
 		StatsIntervalSec: int64(drone.DeviceConfig.Stats.Interval / time.Second),
 		WSRelayBase:      "//" + drone.DeviceConfig.Server.URL + drone.DeviceConfig.Tunnel.WSPath,
+	}
+
+	// do a webrequest on /status for tunnel data
+
+	resp, _, err := web.WebRequest(http.MethodGet, getServerPath(r)+"/status", "", nil)
+	if err != nil {
+		slog.Info("failed to fetch tunnel status", "drone_id", droneID, "error", err)
+		http.Redirect(w, r, "/fleets", http.StatusInternalServerError)
+	}
+
+	var tunnelStatus data.TunnelStatus
+	if err := json.Unmarshal(resp, &tunnelStatus); err != nil {
+		slog.Error("failed to decode tunnel status", "drone_id", droneID, "error", err)
+		http.Redirect(w, r, "/fleets", http.StatusInternalServerError)
+		return
+	}
+
+	for topic, tStats := range tunnelStatus.Topics {
+		if strings.HasPrefix(topic, droneID) {
+			if tStats.HasProducer {
+				view.LiveTunnelTopics = append(view.LiveTunnelTopics, topic)
+			}
+		}
 	}
 
 	renderTemplate(w, "drone-details", view)

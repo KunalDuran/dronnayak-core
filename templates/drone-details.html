@@ -244,12 +244,12 @@
               </button>
             </div>
             {{ $root := . }}
-            {{ range $index, $port := .DeviceConfig.Tunnel.Endpoints }}
+            {{ range $index, $topic := .LiveTunnelTopics }}
             <div class="mb-2">
               <div class="input-group input-group-sm">
                 <input type="text"
                        class="form-control font-monospace bg-light"
-                       data-wsbase="{{ $root.WSRelayBase }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port.Label }}"
+                       data-wsbase="{{ $root.WSRelayBase }}?role=subscriber&topic={{ $topic }}"
                        readonly
                        id="relay-{{ $index }}">
                 <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('relay-{{ $index }}')">

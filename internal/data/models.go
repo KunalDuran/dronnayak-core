@@ -91,3 +91,19 @@ type CPUInfo struct {
 	Model         string  `json:"model"`
 	Frequency     float64 `json:"frequency"`
 }
+
+type TunnelStatus struct {
+	ActiveProducers  int                    `json:"active_producers,omitempty"`
+	Timestamp        time.Time              `json:"timestamp,omitempty"`
+	Topics           map[string]TunnelStats `json:"topics,omitempty"`
+	TotalSubscribers int                    `json:"total_subscribers,omitempty"`
+	TotalTopics      int                    `json:"total_topics,omitempty"`
+}
+
+type TunnelStats struct {
+	HasProducer      bool   `json:"has_producer,omitempty"`
+	HasWorker        bool   `json:"has_worker,omitempty"`
+	MessageQueueSize int    `json:"message_queue_size,omitempty"`
+	Name             string `json:"name,omitempty"`
+	SubscriberCount  int    `json:"subscriber_count,omitempty"`
+}
