@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/KunalDuran/dronnayak-core/internal/data"
+	"github.com/KunalDuran/gowsrelay/client"
 	"github.com/bluenviron/gomavlib/v3"
 	"github.com/bluenviron/gomavlib/v3/pkg/dialects/common"
 )
@@ -186,20 +187,51 @@ func (d *Dronnayak) processMAVLinkEvents(ctx context.Context) {
 	}
 }
 
-// startTunnels starts WebSocket tunnels for configured ports with reconnection
+// endpointFactory returns an EndpointFactory for the given TunnelEntry.
+// Add new endpoint types here as the client package grows.
+func endpointFactory(entry data.TunnelEntry) (EndpointFactory, error) {
+	switch entry.Type {
+	case data.EndpointTypeTCP:
+		if entry.Port == "" {
+			return nil, fmt.Errorf("tcp endpoint requires a port")
+		}
+		port := entry.Port
+		return func() (client.LocalEndpoint, error) {
+			return client.TCPEndpoint("localhost", port)
+		}, nil
+	case data.EndpointTypeCmd:
+		return func() (client.LocalEndpoint, error) {
+			return client.NewCmdEndpoint(), nil
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown endpoint type %q", entry.Type)
+	}
+}
+
+// startTunnels starts WebSocket tunnels for all configured endpoints with reconnection
 func (d *Dronnayak) startTunnels(ctx context.Context) {
-	if len(d.config.Tunnel.Ports) == 0 {
-		slog.Warn("no tunnel ports configured")
+	if len(d.config.Tunnel.Endpoints) == 0 {
+		slog.Warn("no tunnel endpoints configured")
 		return
 	}
 
 	serverHost := d.cleanServerURL(d.config.Server.URL)
-	d.tunnelManagers = make([]*TunnelManager, 0, len(d.config.Tunnel.Ports))
+	d.tunnelManagers = make([]*TunnelManager, 0, len(d.config.Tunnel.Endpoints))
 
-	for _, port := range d.config.Tunnel.Ports {
-		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, port)
+	for _, entry := range d.config.Tunnel.Endpoints {
+		label := entry.Label
+		if label == "" {
+			label = string(entry.Type)
+		}
+		tunnelID := fmt.Sprintf("%s_%s", d.config.UUID, label)
 
-		tm := NewTunnelManager(serverHost, port, d.config.Tunnel.WSPath, tunnelID)
+		factory, err := endpointFactory(entry)
+		if err != nil {
+			slog.Warn("skipping tunnel endpoint", "label", label, "error", err)
+			continue
+		}
+
+		tm := NewTunnelManager(serverHost, d.config.Tunnel.WSPath, tunnelID, label, factory)
 		if strings.Contains(d.config.Server.URL, "https") {
 			tm.wsScheme = "wss"
 		}
@@ -212,7 +244,7 @@ func (d *Dronnayak) startTunnels(ctx context.Context) {
 		}(tm)
 	}
 
-	slog.Info("tunnels started", "count", len(d.config.Tunnel.Ports), "auto_reconnect", true)
+	slog.Info("tunnels started", "count", len(d.tunnelManagers), "auto_reconnect", true)
 }
 
 // cleanServerURL removes http/https schema from server URL

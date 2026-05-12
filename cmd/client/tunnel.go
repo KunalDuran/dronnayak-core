@@ -8,13 +8,17 @@ import (
 	"github.com/KunalDuran/gowsrelay/client"
 )
 
+// EndpointFactory creates a fresh LocalEndpoint for each tunnel connection attempt.
+type EndpointFactory func() (client.LocalEndpoint, error)
+
 // TunnelManager handles WebSocket tunnel lifecycle with reconnection
 type TunnelManager struct {
-	serverHost string
-	port       string
-	wsPath     string
-	tunnelID   string
-	wsScheme   string
+	serverHost      string
+	wsPath          string
+	tunnelID        string
+	wsScheme        string
+	label           string
+	endpointFactory EndpointFactory
 
 	maxRetries int
 	baseDelay  time.Duration
@@ -22,29 +26,30 @@ type TunnelManager struct {
 }
 
 // NewTunnelManager creates a new tunnel manager instance
-func NewTunnelManager(serverHost, port, wsPath, tunnelID string) *TunnelManager {
+func NewTunnelManager(serverHost, wsPath, tunnelID, label string, factory EndpointFactory) *TunnelManager {
 	return &TunnelManager{
-		serverHost: serverHost,
-		port:       port,
-		wsPath:     wsPath,
-		wsScheme:   "ws",
-		tunnelID:   tunnelID,
-		maxRetries: -1, // infinite retries
-		baseDelay:  2 * time.Second,
-		maxDelay:   2 * time.Minute,
+		serverHost:      serverHost,
+		wsPath:          wsPath,
+		wsScheme:        "ws",
+		tunnelID:        tunnelID,
+		label:           label,
+		endpointFactory: factory,
+		maxRetries:      -1, // infinite retries
+		baseDelay:       2 * time.Second,
+		maxDelay:        2 * time.Minute,
 	}
 }
 
 // Start begins the tunnel connection with automatic reconnection
 func (tm *TunnelManager) Start(ctx context.Context) {
-	slog.Info("starting tunnel", "port", tm.port, "id", tm.tunnelID)
+	slog.Info("starting tunnel", "label", tm.label, "id", tm.tunnelID)
 
 	retryCount := 0
 
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("tunnel shutting down", "port", tm.port, "id", tm.tunnelID)
+			slog.Info("tunnel shutting down", "label", tm.label, "id", tm.tunnelID)
 			return
 		default:
 			tunConfig := client.TunnelConfig{
@@ -53,9 +58,9 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 				Path:   tm.wsPath,
 				Scheme: tm.wsScheme,
 			}
-			ep, err := client.TCPEndpoint("localhost", tm.port)
+			ep, err := tm.endpointFactory()
 			if err != nil {
-				slog.Info("tunnel shutting down", "port", tm.port, "id", tm.tunnelID)
+				slog.Error("endpoint creation failed, shutting down tunnel", "label", tm.label, "id", tm.tunnelID, "error", err)
 				return
 			}
 
@@ -64,7 +69,7 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 				delay := tm.calculateBackoff(retryCount)
 
 				slog.Warn("tunnel error, reconnecting",
-					"port", tm.port,
+					"label", tm.label,
 					"id", tm.tunnelID,
 					"error", err,
 					"delay", delay,
@@ -75,14 +80,14 @@ func (tm *TunnelManager) Start(ctx context.Context) {
 				case <-time.After(delay):
 					continue
 				case <-ctx.Done():
-					slog.Info("tunnel shutting down during reconnect wait", "port", tm.port, "id", tm.tunnelID)
+					slog.Info("tunnel shutting down during reconnect wait", "label", tm.label, "id", tm.tunnelID)
 					return
 				}
 			}
 
 			// If connection closed gracefully (no error), reset retry count
 			retryCount = 0
-			slog.Info("tunnel closed gracefully, reconnecting", "port", tm.port, "id", tm.tunnelID)
+			slog.Info("tunnel closed gracefully, reconnecting", "label", tm.label, "id", tm.tunnelID)
 
 			// Brief pause before reconnecting on graceful close
 			select {

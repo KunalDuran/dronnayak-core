@@ -38,9 +38,23 @@ type ServerConfig struct {
 	URL string `json:"url" bson:"url"` // Base server URL
 }
 
+type EndpointType string
+
+const (
+	EndpointTypeTCP EndpointType = "tcp"
+	EndpointTypeCmd EndpointType = "cmd"
+)
+
+// TunnelEntry describes a single tunnel endpoint in config.
+type TunnelEntry struct {
+	Type  EndpointType `json:"type" bson:"type"`   // "tcp" or "cmd"
+	Port  string       `json:"port" bson:"port"`   // required for "tcp" type
+	Label string       `json:"label" bson:"label"` // optional human-readable label / tunnel suffix
+}
+
 type TunnelConfig struct {
-	Ports  []string `json:"ports" bson:"ports"`     // Ports to tunnel
-	WSPath string   `json:"ws_path" bson:"ws_path"` // WebSocket path, default: /ws
+	Endpoints []TunnelEntry `json:"endpoints" bson:"endpoints"` // per-tunnel endpoint config
+	WSPath    string        `json:"ws_path" bson:"ws_path"`     // WebSocket path, default: /ws
 }
 
 type StatsConfig struct {
@@ -155,7 +169,9 @@ func NewDefaultDeviceConfig(uuid, serverURL string) Config {
 			URL: serverURL,
 		},
 		Tunnel: TunnelConfig{
-			Ports:  []string{"5760"},
+			Endpoints: []TunnelEntry{
+				{Type: EndpointTypeTCP, Port: "5760", Label: "5760"},
+			},
 			WSPath: "/ws",
 		},
 		Stats: StatsConfig{
