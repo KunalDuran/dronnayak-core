@@ -20,7 +20,7 @@
       <!-- Topic + Connect -->
       <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <div class="input-group input-group-sm" style="max-width: 480px;">
-          <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
+          <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;"><span class="js-ws-proto">ws:</span>{{ .WSRelayBase }}?role=subscriber&amp;topic=</span>
           <input type="text" id="stream-topic" class="form-control font-monospace"
                  style="font-size:0.78rem;"
                  value="{{ .UID }}_cam"
@@ -44,6 +44,9 @@
 </div>
 
 <script>
+const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+document.querySelectorAll('.js-ws-proto').forEach(el => { el.textContent = wsProto; });
+
 let streamWS        = null;
 let streamConnected = false;
 
@@ -55,7 +58,7 @@ function streamConnect() {
   const topic = document.getElementById('stream-topic').value.trim();
   if (!topic) return;
 
-  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+  const url = `${wsProto}{{ .WSRelayBase }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
   streamWS = new WebSocket(url);
   streamWS.binaryType = 'blob';
 

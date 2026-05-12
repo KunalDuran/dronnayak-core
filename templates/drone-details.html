@@ -249,7 +249,7 @@
               <div class="input-group input-group-sm">
                 <input type="text"
                        class="form-control font-monospace bg-light"
-                       value="ws://{{$root.DeviceConfig.Server.URL}}{{ $root.DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port.Label }}"
+                       data-wsbase="{{ $root.WSRelayBase }}?role=subscriber&topic={{ $root.DeviceConfig.UUID }}_{{ $port.Label }}"
                        readonly
                        id="relay-{{ $index }}">
                 <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('relay-{{ $index }}')">
@@ -337,6 +337,9 @@ function copyToClipboard(elementId) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.querySelectorAll('input[data-wsbase]').forEach(el => { el.value = wsProto + el.dataset.wsbase; });
+
   const bootEl = document.getElementById('bootTime');
   if (bootEl) bootEl.textContent = new Date(parseInt(bootEl.textContent) * 1000).toLocaleString();
 

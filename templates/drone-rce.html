@@ -20,7 +20,7 @@
       <!-- Topic + Connect -->
       <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <div class="input-group input-group-sm" style="max-width: 480px;">
-          <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
+          <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;"><span class="js-ws-proto">ws:</span>{{ .WSRelayBase }}?role=subscriber&amp;topic=</span>
           <input type="text" id="rce-topic" class="form-control font-monospace"
                  style="font-size:0.78rem;"
                  value="{{ .UID }}_cmd"
@@ -68,6 +68,9 @@
 </style>
 
 <script>
+const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+document.querySelectorAll('.js-ws-proto').forEach(el => { el.textContent = wsProto; });
+
 let rceWS        = null;
 let rceConnected = false;
 const rceOutputEl = document.getElementById('rce-output');
@@ -80,7 +83,7 @@ function rceConnect() {
   const topic = document.getElementById('rce-topic').value.trim();
   if (!topic) { rceLog('Topic cannot be empty.', 'text-danger'); return; }
 
-  const url = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+  const url = `${wsProto}{{ .WSRelayBase }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
   rceLog(`Connecting to ${url} …`, 'text-muted');
   rceWS = new WebSocket(url);
 

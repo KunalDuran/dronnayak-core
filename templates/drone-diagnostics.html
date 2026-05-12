@@ -54,6 +54,8 @@
 </style>
 
 <script>
+const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+
 const logsEl        = document.getElementById('logs');
 const streamLogsBtn = document.getElementById('streamLogsBtn');
 let logSocket       = null;
@@ -66,7 +68,7 @@ function toggleLogStream() {
 function startLogStream() {
   if (logSocket) logSocket.close();
   const topic = document.getElementById('log-topic').value.trim();
-  const url   = `ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
+  const url   = `${wsProto}{{ .WSRelayBase }}?role=subscriber&topic=${encodeURIComponent(topic)}`;
 
   logSocket = new WebSocket(url);
 

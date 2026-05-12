@@ -205,9 +205,11 @@ func deviceDetails(w http.ResponseWriter, r *http.Request) {
 	view := struct {
 		data.Drone
 		StatsIntervalSec int64
+		WSRelayBase      string
 	}{
 		Drone:            drone,
 		StatsIntervalSec: int64(drone.DeviceConfig.Stats.Interval / time.Second),
+		WSRelayBase:      "//" + drone.DeviceConfig.Server.URL + drone.DeviceConfig.Tunnel.WSPath,
 	}
 
 	renderTemplate(w, "drone-details", view)
@@ -229,9 +231,11 @@ func deviceSubPage(tmplName string) http.HandlerFunc {
 		view := struct {
 			data.Drone
 			StatsIntervalSec int64
+			WSRelayBase      string
 		}{
 			Drone:            drone,
 			StatsIntervalSec: int64(drone.DeviceConfig.Stats.Interval / time.Second),
+			WSRelayBase:      "//" + drone.DeviceConfig.Server.URL + drone.DeviceConfig.Tunnel.WSPath,
 		}
 		renderTemplate(w, tmplName, view)
 	}
