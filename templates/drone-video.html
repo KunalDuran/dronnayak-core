@@ -1,5 +1,5 @@
 {{ define "content" }}
-<div class="container-fluid mt-4 mb-5 px-4">
+<div class="container-fluid mt-3 mt-sm-4 mb-5 px-2 px-sm-4">
 
   <!-- Header -->
   <div class="d-flex align-items-center gap-3 mb-4">
@@ -19,20 +19,20 @@
     <div class="card-body p-4">
       <!-- Topic + Connect -->
       <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <div class="input-group input-group-sm" style="max-width: 480px;">
+        <div class="input-group input-group-sm flex-grow-1" style="max-width: 480px;">
           <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;"><span class="js-ws-proto">ws:</span>{{ .WSRelayBase }}?role=subscriber&amp;topic=</span>
           <input type="text" id="stream-topic" class="form-control font-monospace"
                  style="font-size:0.78rem;"
                  value="{{ .UID }}_cam"
                  placeholder="topic">
         </div>
-        <button id="stream-connect-btn" class="btn btn-sm btn-primary ms-auto" onclick="streamToggleConnect()">
+        <button id="stream-connect-btn" class="btn btn-sm btn-primary flex-shrink-0 ms-auto" onclick="streamToggleConnect()">
           <i class="bi bi-plug-fill me-1"></i>Connect
         </button>
       </div>
 
       <!-- Video -->
-      <div class="bg-dark rounded d-flex align-items-center justify-content-center" style="height: calc(100vh - 310px); min-height: 320px; overflow: hidden;">
+      <div class="bg-dark rounded d-flex align-items-center justify-content-center stream-video-container" style="height: calc(100vh - 310px); min-height: 320px; overflow: hidden;">
         <img id="stream-img" class="img-fluid w-100" style="object-fit: contain; max-height: 100%; display: none;" alt="Live stream">
         <div id="stream-placeholder" class="text-muted text-center py-5">
           <i class="bi bi-camera-video fs-1 d-block mb-2"></i>
@@ -42,6 +42,15 @@
     </div>
   </div>
 </div>
+
+<style>
+  @media (max-width: 575.98px) {
+    .stream-video-container {
+      height: calc(100vh - 340px) !important;
+      min-height: 240px !important;
+    }
+  }
+</style>
 
 <script>
 const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';

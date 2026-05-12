@@ -1,5 +1,5 @@
 {{ define "content" }}
-<div class="container-fluid mt-4 mb-5 px-4">
+<div class="container-fluid mt-3 mt-sm-4 mb-5 px-2 px-sm-4">
 
   <!-- Header -->
   <div class="d-flex align-items-center gap-3 mb-4">
@@ -20,14 +20,14 @@
 
       <!-- Topic + Connect -->
       <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-        <div class="input-group input-group-sm" style="max-width: 480px;">
+        <div class="input-group input-group-sm flex-grow-1" style="max-width: 480px;">
           <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;"><span class="js-ws-proto">ws:</span>{{ .WSRelayBase }}?role=subscriber&amp;topic=</span>
           <input type="text" id="rce-topic" class="form-control font-monospace"
                  style="font-size:0.78rem;"
                  value="{{ .UID }}_cmd"
                  placeholder="topic">
         </div>
-        <div class="d-flex gap-2 ms-auto">
+        <div class="d-flex gap-2 ms-auto flex-shrink-0">
           <button id="rce-connect-btn" class="btn btn-sm btn-primary" onclick="rceToggleConnect()">
             <i class="bi bi-plug-fill me-1"></i>Connect
           </button>
@@ -60,7 +60,7 @@
                disabled
                onkeydown="rceHandleKey(event)">
         <button id="rce-run-btn" class="btn btn-success font-monospace" onclick="rceSend()" disabled>
-          <i class="bi bi-send-fill me-1"></i>Run
+          <i class="bi bi-send-fill"></i><span class="d-none d-sm-inline ms-1">Run</span>
         </button>
         <button id="rce-stop-btn" class="btn btn-outline-danger font-monospace d-none" onclick="rceSendExit()" title="Send exit (kill process)">
           <i class="bi bi-stop-fill"></i>
@@ -84,6 +84,15 @@
   #rce-input:focus { box-shadow: none; border-color: #198754 !important; }
 
   #rce-kill-btn, #rce-stop-btn { transition: opacity 0.15s; }
+
+  @media (max-width: 575.98px) {
+    #rce-output {
+      height: calc(100vh - 400px);
+      min-height: 200px;
+      font-size: 10px;
+    }
+    #rce-input { font-size: 0.8rem !important; }
+  }
 </style>
 
 <script>
