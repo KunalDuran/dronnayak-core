@@ -359,7 +359,7 @@
             <i class="bi bi-terminal-fill me-2"></i>Shell
           </p>
           <div class="input-group input-group-sm" style="max-width: 440px;">
-            <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=publisher&amp;topic=</span>
+            <span class="input-group-text font-monospace text-muted" style="font-size:0.78rem;">ws://{{ .DeviceConfig.Server.URL }}{{ .DeviceConfig.Tunnel.WSPath }}?role=subscriber&amp;topic=</span>
             <input type="text" id="rce-topic" class="form-control font-monospace"
                    style="font-size:0.78rem;"
                    value="{{ .UID }}_rce"
@@ -939,19 +939,37 @@ function rceClear() {
             <h6 class="fw-semibold mb-0">Tunnel Configuration</h6>
           </div>
           <div class="mb-3">
-            <label class="form-label">Tunnel Ports</label>
-            <div id="editTunnelPortsContainer">
-              {{ range .DeviceConfig.Tunnel.Ports }}
-              <div class="input-group mb-2">
-                <input type="text" class="form-control edit-tunnel-port" value="{{ . }}" placeholder="Port number">
-                <button type="button" class="btn btn-outline-danger" onclick="removeEditPort(this)">
-                  <i class="bi bi-x-lg"></i>
-                </button>
+            <label class="form-label">Tunnel Endpoints</label>
+            <div id="editTunnelEndpointsContainer">
+              {{ range .DeviceConfig.Tunnel.Endpoints }}
+              <div class="edit-endpoint-row border rounded p-2 mb-2">
+                <div class="row g-2 align-items-end">
+                  <div class="col-4">
+                    <label class="form-label small mb-1">Type</label>
+                    <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
+                      <option value="tcp" {{ if eq .Type "tcp" }}selected{{ end }}>TCP</option>
+                      <option value="cmd" {{ if eq .Type "cmd" }}selected{{ end }}>CMD (RCE)</option>
+                    </select>
+                  </div>
+                  <div class="col-4 edit-ep-port-group" {{ if eq .Type "cmd" }}style="display:none"{{ end }}>
+                    <label class="form-label small mb-1">Port</label>
+                    <input type="text" class="form-control form-control-sm edit-ep-port" value="{{ .Port }}" placeholder="e.g. 5760">
+                  </div>
+                  <div class="col-3">
+                    <label class="form-label small mb-1">Label</label>
+                    <input type="text" class="form-control form-control-sm edit-ep-label" value="{{ .Label }}" placeholder="optional">
+                  </div>
+                  <div class="col-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
               {{ end }}
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEditPort()">
-              <i class="bi bi-plus-circle me-1"></i>Add Port
+            <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="addEditEndpoint()">
+              <i class="bi bi-plus-circle me-1"></i>Add Endpoint
             </button>
           </div>
         </div>
@@ -990,35 +1008,64 @@ function rceClear() {
 <script>
   const droneUID = '{{ .UID }}';
 
-  function addEditPort() {
-    const container = document.getElementById('editTunnelPortsContainer');
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-      <input type="text" class="form-control edit-tunnel-port" value="" placeholder="Port number">
-      <button type="button" class="btn btn-outline-danger" onclick="removeEditPort(this)">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    `;
-    container.appendChild(div);
+  function editEndpointRowHTML(type, port, label) {
+    return `
+      <div class="edit-endpoint-row border rounded p-2 mb-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-4">
+            <label class="form-label small mb-1">Type</label>
+            <select class="form-select form-select-sm edit-ep-type" onchange="onEditEpTypeChange(this)">
+              <option value="tcp" ${type === 'tcp' ? 'selected' : ''}>TCP</option>
+              <option value="cmd" ${type === 'cmd' ? 'selected' : ''}>CMD (RCE)</option>
+            </select>
+          </div>
+          <div class="col-4 edit-ep-port-group" style="${type === 'cmd' ? 'display:none' : ''}">
+            <label class="form-label small mb-1">Port</label>
+            <input type="text" class="form-control form-control-sm edit-ep-port" value="${port}" placeholder="e.g. 5760">
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">Label</label>
+            <input type="text" class="form-control form-control-sm edit-ep-label" value="${label}" placeholder="optional">
+          </div>
+          <div class="col-1 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEditEndpoint(this)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </div>`;
   }
 
-  function removeEditPort(btn) {
-    const container = document.getElementById('editTunnelPortsContainer');
+  function addEditEndpoint() {
+    const container = document.getElementById('editTunnelEndpointsContainer');
+    const div = document.createElement('div');
+    div.innerHTML = editEndpointRowHTML('tcp', '', '');
+    container.appendChild(div.firstElementChild);
+  }
+
+  function removeEditEndpoint(btn) {
+    const container = document.getElementById('editTunnelEndpointsContainer');
     if (container.children.length > 1) {
-      btn.parentElement.remove();
+      btn.closest('.edit-endpoint-row').remove();
     } else {
-      alert('At least one port is required');
+      alert('At least one endpoint is required');
     }
   }
 
-  function saveConfig() {
-    const ports = [...document.querySelectorAll('.edit-tunnel-port')]
-      .map(i => i.value.trim())
-      .filter(v => v !== '');
+  function onEditEpTypeChange(select) {
+    const row = select.closest('.edit-endpoint-row');
+    row.querySelector('.edit-ep-port-group').style.display = select.value === 'tcp' ? '' : 'none';
+  }
 
-    if (ports.length === 0) {
-      showConfigAlert('At least one tunnel port is required.', 'danger');
+  function saveConfig() {
+    const endpoints = [...document.querySelectorAll('.edit-endpoint-row')].map(row => ({
+      type:  row.querySelector('.edit-ep-type').value,
+      port:  (row.querySelector('.edit-ep-port')?.value || '').trim(),
+      label: (row.querySelector('.edit-ep-label')?.value || '').trim(),
+    }));
+
+    if (endpoints.length === 0) {
+      showConfigAlert('At least one tunnel endpoint is required.', 'danger');
       return;
     }
 
@@ -1038,7 +1085,7 @@ function rceClear() {
         out_system_id:    255,
       },
       server: { url: '' },
-      tunnel: { ports },
+      tunnel: { endpoints },
       stats: {
         enabled:  document.getElementById('cfg-stats-enabled').checked,
         interval: intervalSec * 1e9,

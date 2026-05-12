@@ -244,17 +244,30 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Build Tunnel config
-	tunnelPorts := []string{}
-	portValues := r.Form["tunnel_ports[]"]
-	for _, port := range portValues {
-		port = strings.TrimSpace(port)
-		if port != "" {
-			tunnelPorts = append(tunnelPorts, port)
+	// Build Tunnel config from endpoint rows submitted by the form.
+	var tunnelEndpoints []data.TunnelEntry
+	epTypes := r.Form["endpoint_type[]"]
+	epPorts := r.Form["endpoint_port[]"]
+	epLabels := r.Form["endpoint_label[]"]
+	for i, rawType := range epTypes {
+		entry := data.TunnelEntry{Type: data.EndpointType(strings.TrimSpace(rawType))}
+		if i < len(epPorts) {
+			entry.Port = strings.TrimSpace(epPorts[i])
 		}
+		if i < len(epLabels) {
+			entry.Label = strings.TrimSpace(epLabels[i])
+		}
+		if entry.Label == "" {
+			if entry.Type == data.EndpointTypeTCP {
+				entry.Label = entry.Port
+			} else {
+				entry.Label = string(entry.Type)
+			}
+		}
+		tunnelEndpoints = append(tunnelEndpoints, entry)
 	}
-	if len(tunnelPorts) == 0 {
-		tunnelPorts = []string{"5760"}
+	if len(tunnelEndpoints) == 0 {
+		tunnelEndpoints = []data.TunnelEntry{{Type: data.EndpointTypeTCP, Port: "5760", Label: "5760"}}
 	}
 
 	// Build Stats config
@@ -273,7 +286,7 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 			URL: serverURL,
 		},
 		Tunnel: data.TunnelConfig{
-			Ports: tunnelPorts,
+			Endpoints: tunnelEndpoints,
 		},
 		Stats: data.StatsConfig{
 			Enabled:  statsEnabled,
@@ -357,6 +370,8 @@ func updateDeviceConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg.UUID = droneID
+	serverURL := getServerPath(r)
+	cfg.Server.URL = serverURL
 	cfg.ApplyDefaults()
 
 	if err := cfg.Validate(); err != nil {

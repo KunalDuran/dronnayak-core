@@ -151,17 +151,35 @@
               <h6 class="fw-semibold mb-0">Tunnel Configuration</h6>
             </div>
             <div class="mb-3">
-              <label class="form-label">Tunnel Ports</label>
-              <div id="tunnelPortsContainer">
-                <div class="input-group mb-2">
-                  <input type="text" class="form-control tunnel-port" name="tunnel_ports[]" value="5760" placeholder="Port number">
-                  <button type="button" class="btn btn-outline-danger" onclick="removePort(this)">
-                    <i class="bi bi-x-lg"></i>
-                  </button>
+              <label class="form-label">Tunnel Endpoints</label>
+              <div id="tunnelEndpointsContainer">
+                <div class="endpoint-row border rounded p-2 mb-2">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-4">
+                      <label class="form-label small mb-1">Type</label>
+                      <select class="form-select form-select-sm endpoint-type" name="endpoint_type[]" onchange="onEndpointTypeChange(this)">
+                        <option value="tcp">TCP</option>
+                        <option value="cmd">CMD (RCE)</option>
+                      </select>
+                    </div>
+                    <div class="col-4 endpoint-port-group">
+                      <label class="form-label small mb-1">Port</label>
+                      <input type="text" class="form-control form-control-sm" name="endpoint_port[]" value="5760" placeholder="e.g. 5760">
+                    </div>
+                    <div class="col-3">
+                      <label class="form-label small mb-1">Label</label>
+                      <input type="text" class="form-control form-control-sm" name="endpoint_label[]" placeholder="optional">
+                    </div>
+                    <div class="col-1 d-flex align-items-end">
+                      <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEndpoint(this)">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPort()">
-                <i class="bi bi-plus-circle me-1"></i>Add Port
+              <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="addEndpoint()">
+                <i class="bi bi-plus-circle me-1"></i>Add Endpoint
               </button>
             </div>
           </div>
@@ -379,27 +397,54 @@
 <script>
   const fleetID = '{{ .ID }}';
 
-  // Add/Remove port inputs
-  function addPort() {
-    const container = document.getElementById('tunnelPortsContainer');
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-      <input type="text" class="form-control tunnel-port" name="tunnel_ports[]" value="" placeholder="Port number">
-      <button type="button" class="btn btn-outline-danger" onclick="removePort(this)">
-        <i class="bi bi-x-lg"></i>
-      </button>
-    `;
-    container.appendChild(div);
+  function endpointRowHTML(type, port, label) {
+    return `
+      <div class="endpoint-row border rounded p-2 mb-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-4">
+            <label class="form-label small mb-1">Type</label>
+            <select class="form-select form-select-sm endpoint-type" name="endpoint_type[]" onchange="onEndpointTypeChange(this)">
+              <option value="tcp" ${type === 'tcp' ? 'selected' : ''}>TCP</option>
+              <option value="cmd" ${type === 'cmd' ? 'selected' : ''}>CMD (RCE)</option>
+            </select>
+          </div>
+          <div class="col-4 endpoint-port-group" style="${type === 'cmd' ? 'display:none' : ''}">
+            <label class="form-label small mb-1">Port</label>
+            <input type="text" class="form-control form-control-sm" name="endpoint_port[]" value="${port}" placeholder="e.g. 5760">
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">Label</label>
+            <input type="text" class="form-control form-control-sm" name="endpoint_label[]" value="${label}" placeholder="optional">
+          </div>
+          <div class="col-1 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeEndpoint(this)">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+      </div>`;
   }
 
-  function removePort(btn) {
-    const container = document.getElementById('tunnelPortsContainer');
+  function addEndpoint() {
+    const container = document.getElementById('tunnelEndpointsContainer');
+    const div = document.createElement('div');
+    div.innerHTML = endpointRowHTML('tcp', '', '');
+    container.appendChild(div.firstElementChild);
+  }
+
+  function removeEndpoint(btn) {
+    const container = document.getElementById('tunnelEndpointsContainer');
     if (container.children.length > 1) {
-      btn.parentElement.remove();
+      btn.closest('.endpoint-row').remove();
     } else {
-      alert('At least one port is required');
+      alert('At least one endpoint is required');
     }
+  }
+
+  function onEndpointTypeChange(select) {
+    const row = select.closest('.endpoint-row');
+    const portGroup = row.querySelector('.endpoint-port-group');
+    portGroup.style.display = select.value === 'tcp' ? '' : 'none';
   }
 
   // Get install command
