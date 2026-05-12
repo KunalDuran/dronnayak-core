@@ -12,8 +12,8 @@
       <div>
         <h1 class="fw-bold mb-2 fs-3">{{ if .Name }}{{ .Name }}{{ else }}{{ .UID }}{{ end }}</h1>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-            <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Online
+          <span id="statusBadge" class="badge px-3 py-2">
+            <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> <span id="statusText">--</span>
           </span>
           <span class="text-muted small font-monospace">{{ .UID }}</span>
         </div>
@@ -344,7 +344,16 @@ document.addEventListener('DOMContentLoaded', function () {
   if (bootEl) bootEl.textContent = new Date(parseInt(bootEl.textContent) * 1000).toLocaleString();
 
   const updEl = document.getElementById('lastUpdated');
-  if (updEl) updEl.textContent = new Date(parseInt(updEl.textContent) * 1000).toLocaleString();
+  if (updEl) {
+    const lastUpdatedSec = parseInt(updEl.textContent);
+    updEl.textContent = new Date(lastUpdatedSec * 1000).toLocaleString();
+
+    const badge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const isOnline = (Date.now() / 1000 - lastUpdatedSec) <= 30;
+    badge.className = `badge px-3 py-2 ${isOnline ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'}`;
+    statusText.textContent = isOnline ? 'Online' : 'Offline';
+  }
 
   const cpuBar = document.getElementById('cpuProgressBar');
   if (cpuBar) {
