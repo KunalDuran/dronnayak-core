@@ -6,9 +6,10 @@ toolchain go1.24.7
 
 require (
 	github.com/KunalDuran/devstat v0.0.0-20250910131446-974c4d16760c
-	github.com/KunalDuran/gowsrelay v0.0.2-0.20260512201957-248febb1320e
+	github.com/KunalDuran/gowsrelay v0.0.2-0.20260514173836-5599deb3fec0
 	github.com/bluenviron/gomavlib/v3 v3.0.0
 	github.com/go-chi/chi/v5 v5.1.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	go.mongodb.org/mongo-driver v1.17.0
 	golang.org/x/crypto v0.26.0
@@ -17,7 +18,6 @@ require (
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect

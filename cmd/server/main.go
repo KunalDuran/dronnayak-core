@@ -122,6 +122,8 @@ func main() {
 		rauth.Get("/device/{drone_id}/diagnostics", deviceSubPage("drone-diagnostics"))
 		rauth.Get("/device/{drone_id}/logs", logViewer)
 		rauth.Post("/device/{drone_id}/commands", createDroneCommand)
+		rauth.Post("/device/{drone_id}/worker", manageWorker)
+		rauth.Delete("/device/{drone_id}/worker", manageWorker)
 	})
 
 	r.Get("/device/{drone_id}/installer.sh", getInstallerScript)

@@ -246,7 +246,7 @@
             {{ $root := . }}
             {{ if .LiveTunnelTopics }}
             {{ range $index, $topic := .LiveTunnelTopics }}
-            <div class="mb-2" id="relay-row-{{ $index }}">
+            <div class="mb-2 relay-row" id="relay-row-{{ $index }}">
               <div class="input-group input-group-sm">
                 <input type="text"
                        class="form-control font-monospace bg-light"
@@ -255,6 +255,12 @@
                        id="relay-{{ $index }}">
                 <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('relay-{{ $index }}')">
                   <i class="bi bi-clipboard"></i>
+                </button>
+                <button class="btn btn-outline-secondary record-btn" type="button"
+                        title="Record stream to file on server"
+                        data-topic="{{ $topic }}"
+                        onclick="toggleWorker(this)">
+                  <i class="bi bi-record-circle"></i>
                 </button>
                 <button class="btn btn-outline-danger stop-tunnel-btn" type="button"
                         title="Stop tunnel"
@@ -327,6 +333,15 @@
   }
   .card-hover { transition: box-shadow 0.15s ease, transform 0.15s ease; cursor: pointer; }
   .card-hover:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.12) !important; transform: translateY(-2px); }
+  .recording-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #dc3545; flex-shrink: 0;
+    animation: rec-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes rec-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.35; transform: scale(0.75); }
+  }
 </style>
 
 <script>
@@ -692,6 +707,67 @@ document.addEventListener('DOMContentLoaded', function () {
     const el = document.getElementById('editConfigAlert');
     el.className = `alert alert-${type}`;
     el.textContent = msg;
+  }
+
+  async function toggleWorker(btn) {
+    const topic = btn.dataset.topic;
+    btn.disabled = true;
+    const prevHTML = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+    if (btn.dataset.recording) {
+      try {
+        await fetch(`/device/${droneUID}/worker?topic=${encodeURIComponent(topic)}`, { method: 'DELETE' });
+      } catch (e) { console.error('stop worker failed:', e); }
+      _setWorkerStopped(btn);
+    } else {
+      try {
+        const r = await fetch(`/device/${droneUID}/worker`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'file-writer', topic }),
+        });
+        if (!r.ok) { const msg = await r.text(); throw new Error(msg); }
+        const data = await r.json();
+        _setWorkerStarted(btn, data.path || '');
+      } catch (e) {
+        btn.innerHTML = prevHTML;
+        btn.disabled = false;
+        console.error('start worker failed:', e);
+      }
+    }
+  }
+
+  function _setWorkerStarted(btn, filePath) {
+    btn.dataset.recording = 'true';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stop-circle-fill"></i>';
+    btn.classList.replace('btn-outline-secondary', 'btn-danger');
+    btn.title = 'Stop recording';
+
+    const row = btn.closest('.relay-row');
+    let el = row.querySelector('.record-status');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'record-status d-flex align-items-center gap-2 mt-1';
+      row.appendChild(el);
+    }
+    const safeFilePath = filePath.replace(/'/g, "\\'");
+    el.innerHTML = `<span class="recording-dot"></span>
+      <code class="small text-muted text-truncate flex-grow-1" title="${filePath}">${filePath}</code>
+      <button class="btn btn-link btn-sm p-0 text-muted" style="font-size:0.75rem"
+              title="Copy path" onclick="navigator.clipboard.writeText('${safeFilePath}')">
+        <i class="bi bi-clipboard"></i>
+      </button>`;
+  }
+
+  function _setWorkerStopped(btn) {
+    delete btn.dataset.recording;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-record-circle"></i>';
+    btn.classList.replace('btn-danger', 'btn-outline-secondary');
+    btn.title = 'Record stream to file on server';
+    btn.closest('.relay-row').querySelector('.record-status')?.remove();
   }
 </script>
 {{ end }}
