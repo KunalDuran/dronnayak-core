@@ -285,6 +285,14 @@
             </p>
             <div class="row g-3">
               <div class="col-6">
+                <small class="text-muted d-block mb-1">MAVLink</small>
+                {{ if .DeviceConfig.MAVLink.Enabled }}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Enabled</span>
+                {{ else }}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Disabled</span>
+                {{ end }}
+              </div>
+              <div class="col-6">
                 <small class="text-muted d-block mb-1">Serial Port</small>
                 <strong class="font-monospace">{{ .DeviceConfig.MAVLink.SerialPort }}</strong>
               </div>
@@ -459,6 +467,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <div class="mb-4">
           <h6 class="fw-semibold mb-3">MAVLink Configuration</h6>
+          <div class="mb-3 form-check form-switch">
+            <input type="checkbox" class="form-check-input" id="cfg-mavlink-enabled" {{ if .DeviceConfig.MAVLink.Enabled }}checked{{ end }}
+                   onchange="document.getElementById('cfg-mavlink-fields').style.display = this.checked ? '' : 'none'">
+            <label class="form-check-label" for="cfg-mavlink-enabled">Enable MAVLink</label>
+          </div>
+          <div id="cfg-mavlink-fields" {{ if not .DeviceConfig.MAVLink.Enabled }}style="display:none"{{ end }}>
           <div class="mb-3">
             <label class="form-label">Serial Port</label>
             <input type="text" class="form-control" id="cfg-serial-port" placeholder="/dev/serial0" value="{{ .DeviceConfig.MAVLink.SerialPort }}">
@@ -477,6 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <input type="number" class="form-control" id="cfg-stream-freq" value="{{ .DeviceConfig.MAVLink.StreamFrequency }}" min="0">
             </div>
           </div>
+          </div><!-- /cfg-mavlink-fields -->
         </div>
 
         <div class="mb-4">
@@ -687,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function () {
       body: JSON.stringify({
         uuid: droneUID,
         mavlink: {
+          enabled:          document.getElementById('cfg-mavlink-enabled').checked,
           serial_port:      document.getElementById('cfg-serial-port').value.trim(),
           tcp_address:      document.getElementById('cfg-tcp-address').value.trim(),
           baud_rate:        parseInt(document.getElementById('cfg-baud-rate').value, 10) || 0,

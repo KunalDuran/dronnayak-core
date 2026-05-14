@@ -27,6 +27,7 @@ type Config struct {
 }
 
 type MAVLinkConfig struct {
+	Enabled         bool   `json:"enabled" bson:"enabled"`                   // Default: false
 	SerialPort      string `json:"serial_port" bson:"serial_port"`           // Override auto-detection
 	BaudRate        int    `json:"baud_rate" bson:"baud_rate"`               // Default: 57600
 	TCPAddress      string `json:"tcp_address" bson:"tcp_address"`           // Default: 0.0.0.0:5760
@@ -160,6 +161,7 @@ func NewDefaultDeviceConfig(uuid, serverURL string) Config {
 	return Config{
 		UUID: uuid,
 		MAVLink: MAVLinkConfig{
+			Enabled:         true,
 			BaudRate:        57600,
 			TCPAddress:      "0.0.0.0:5760",
 			StreamFrequency: 10,

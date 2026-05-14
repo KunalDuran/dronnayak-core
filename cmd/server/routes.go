@@ -288,6 +288,7 @@ func createDrone(w http.ResponseWriter, r *http.Request) {
 
 	// Build MAVLink config
 	mavlinkConfig := data.MAVLinkConfig{
+		Enabled:         r.Form.Get("mavlink_enabled") == "on",
 		SerialPort:      r.Form.Get("serial_port"),
 		TCPAddress:      r.Form.Get("tcp_address"),
 		StreamFrequency: 10,

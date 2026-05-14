@@ -125,6 +125,12 @@
               </div>
               <h6 class="fw-semibold mb-0">MAVLink Configuration</h6>
             </div>
+            <div class="mb-3 form-check form-switch">
+              <input type="checkbox" class="form-check-input" id="mavlinkEnabled" name="mavlink_enabled"
+                     onchange="document.getElementById('mavlink-fields').style.display = this.checked ? '' : 'none'">
+              <label class="form-check-label" for="mavlinkEnabled">Enable MAVLink</label>
+            </div>
+            <div id="mavlink-fields" style="display:none">
             <div class="mb-3">
               <label for="serialPort" class="form-label">Serial Port</label>
               <input type="text" class="form-control" placeholder="/dev/serial0" id="serialPort" name="serial_port">
@@ -140,6 +146,7 @@
               <input type="number" class="form-control" id="streamFrequency" name="stream_frequency" value="10" min="0">
               <small class="form-text text-muted">Data stream update frequency</small>
             </div>
+            </div><!-- /mavlink-fields -->
           </div>
 
           <!-- Tunnel Config Section -->

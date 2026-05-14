@@ -57,18 +57,21 @@ func (d *Dronnayak) Run(ctx context.Context) error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Initialize MAVLink node
-	if err := d.initMAVLink(); err != nil {
-		return fmt.Errorf("failed to initialize MAVLink: %w", err)
-	}
-	defer d.Close()
+	// Initialize MAVLink node if enabled in config
+	if d.config.MAVLink.Enabled {
+		if err := d.initMAVLink(); err != nil {
+			return fmt.Errorf("failed to initialize MAVLink: %w", err)
+		}
+		defer d.Close()
 
-	// Start MAVLink event processing
-	d.wg.Add(1)
-	go func() {
-		defer d.wg.Done()
-		d.processMAVLinkEvents(ctx)
-	}()
+		d.wg.Add(1)
+		go func() {
+			defer d.wg.Done()
+			d.processMAVLinkEvents(ctx)
+		}()
+	} else {
+		slog.Info("MAVLink disabled by config, skipping initialization")
+	}
 
 	// Start WebSocket tunnels
 	d.startTunnels(ctx, d.config.Tunnel.Endpoints)
